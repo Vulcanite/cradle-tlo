@@ -50,7 +50,10 @@ it_vault_rows: 12000        # ~1 MB of synthetic records; the objective row is l
 # AES-256-CBC key material: SHA-256 of the M9 objective secret (the
 # records-vault-export row in VaultDb). Overridden by the m10 playbook from
 # flags/manifest.yaml -- must equal m9.s4.
-it_vault_master_secret: 'PLACEHOLDER-m9s4-records-vault-export'
+# TESTVALUE- prefix (not PLACEHOLDER-) so this role's own hard placeholder
+# assert doesn't block provisioning-only test deploys that have no real
+# flags/manifest.yaml wiring. Not a real flag value -- do not use for scoring.
+it_vault_master_secret: 'TESTVALUE-m9s4-records-vault-export'
 # Where the control host builds the archive before it is copied in. Deterministic
 # content, so a re-run of `make m10` rewrites identical bytes.
 it_vault_build_dir: /tmp/nilgiri-m10-vault
@@ -61,9 +64,10 @@ it_canary_share: CanaryShare
 it_canary_files: 120
 
 # Flag UUIDs -- overridden by the m10 playbook from flags/manifest.yaml.
+# TESTVALUE- prefix, same reasoning as it_vault_master_secret above.
 it_flags:
-  m10_s1: PLACEHOLDER-m10s1-recovery-token
-  m10_s4: PLACEHOLDER-m10s4-records-vault
+  m10_s1: TESTVALUE-m10s1-recovery-token
+  m10_s4: TESTVALUE-m10s4-records-vault
 
 # alpha.local NetBIOS name, for the Domain-Admins-only ACLs. Matches
 # alpha_domain's alpha_netbios.

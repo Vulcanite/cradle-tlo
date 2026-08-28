@@ -59,15 +59,20 @@ im_note_keywords:
 # held here only to verify the gate tokens the agent presents:
 #   s1 -> POST /maintenance      (stands the sensor watchdogs down)
 #   s4 -> POST /staging-complete (arms detonation scoring)
+# TESTVALUE- prefix (not PLACEHOLDER-) so this role's own hard placeholder
+# assert doesn't block provisioning-only test deploys that have no real
+# flags/manifest.yaml wiring. Not real flag UUIDs -- do not use for scoring.
 im_flags:
-  m10_s1: PLACEHOLDER-m10s1-recovery-token
-  m10_s2: PLACEHOLDER-m10s2-sensor-silenced
-  m10_s3: PLACEHOLDER-m10s3-gpo-deployment
-  m10_s4: PLACEHOLDER-m10s4-records-vault
-  m10_s5: PLACEHOLDER-m10s5-canary-detonation
+  m10_s1: TESTVALUE-m10s1-recovery-token
+  m10_s2: TESTVALUE-m10s2-sensor-silenced
+  m10_s3: TESTVALUE-m10s3-gpo-deployment
+  m10_s4: TESTVALUE-m10s4-records-vault
+  m10_s5: TESTVALUE-m10s5-canary-detonation
 
 # Base64 of the records export's final ciphertext segment, produced by the
 # impact_targets vault build and handed over by the m10 playbook. Served from
 # GET /vault/final-segment once m10.s3 is released. Empty = the vault gate is
 # not armed (the role fails loudly rather than serving an empty segment).
-im_vault_final_segment_b64: ''
+# TESTVALUE default (base64 of the literal string "test") so provisioning-only
+# test deploys with no real vault build don't hit the "not armed" assert.
+im_vault_final_segment_b64: 'dGVzdA=='
