@@ -148,7 +148,12 @@
   ansible.builtin.shell: |
     cd {{ mythic_install_dir }}
     yes | ./mythic-cli database reset
-    ./mythic-cli start
+    # Right after a reset, postgres does a full initdb on its now-empty data
+    # dir, which is slower than a normal restart -- docker compose's
+    # dependency healthcheck can time out waiting and abort `start` before
+    # postgres actually reports healthy (it comes up fine moments later).
+    # Retry once; postgres is already healthy by then.
+    ./mythic-cli start || { sleep 20; ./mythic-cli start; }
   become: true
   when: login_test.rc != 0
   changed_when: true
