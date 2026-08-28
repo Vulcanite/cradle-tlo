@@ -54,14 +54,17 @@
   ansible.builtin.command:
     cmd: "./mythic-cli install github https://github.com/MythicAgents/{{ mythic_agent }}"
     chdir: "{{ mythic_install_dir }}"
-    creates: "{{ mythic_install_dir }}/Payload_Types/{{ mythic_agent }}"
+    # v3.4.0.61 installs both agents and C2 profiles under InstalledServices/
+    # (confirmed via `find /opt/Mythic -maxdepth 2 -type d`), not the
+    # Payload_Types/C2_Profiles split used by older Mythic versions.
+    creates: "{{ mythic_install_dir }}/InstalledServices/{{ mythic_agent }}"
   become: true
 
 - name: Install the {{ mythic_c2_profile }} C2 profile
   ansible.builtin.command:
     cmd: "./mythic-cli install github https://github.com/MythicC2Profiles/{{ mythic_c2_profile }}"
     chdir: "{{ mythic_install_dir }}"
-    creates: "{{ mythic_install_dir }}/C2_Profiles/{{ mythic_c2_profile }}"
+    creates: "{{ mythic_install_dir }}/InstalledServices/{{ mythic_c2_profile }}"
   become: true
 
 # On a fresh DB this seeds the operator on first start; on an existing DB it
