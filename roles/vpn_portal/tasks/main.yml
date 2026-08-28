@@ -134,6 +134,11 @@
   ansible.builtin.shell: |
     set -eo pipefail
     ip -o -4 route show {{ item.cidr }} | sed -nE 's/.* dev ([^ ]+).*/\1/p' | head -1
+  args:
+    # `pipefail` is a bash-ism -- ansible.builtin.shell defaults to /bin/sh,
+    # which is dash on Debian/Ubuntu and rejects it outright ("Illegal
+    # option -o pipefail"). Force bash explicitly.
+    executable: /bin/bash
   loop: "{{ vpn_portal_pivot_segments }}"
   loop_control:
     label: "{{ item.label }} ({{ item.cidr }})"

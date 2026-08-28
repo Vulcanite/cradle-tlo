@@ -112,6 +112,10 @@
     docker exec -e PGPASSWORD="$(env_get POSTGRES_PASSWORD)" mythic_postgres \
       psql -U "$(env_get POSTGRES_USER)" -d "$(env_get POSTGRES_DB)" -tAc \
       "UPDATE callbackport SET deleted=true WHERE deleted=false;"
+  args:
+    # pipefail is a bash-ism; ansible.builtin.shell defaults to /bin/sh
+    # (dash on Debian/Ubuntu), which rejects it outright.
+    executable: /bin/bash
   become: true
   register: socks_sweep
   changed_when: "'UPDATE 0' not in socks_sweep.stdout"
@@ -134,6 +138,8 @@
          AND id <> (SELECT id FROM callback WHERE active=false
                     AND description ~ '[0-9a-f-]{36}' ORDER BY id LIMIT 1);
        SET session_replication_role=DEFAULT;"
+  args:
+    executable: /bin/bash
   become: true
   register: callback_prune
   changed_when: "'DELETE 0' not in callback_prune.stdout"
