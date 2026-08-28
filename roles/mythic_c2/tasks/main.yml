@@ -103,16 +103,26 @@
   delay: 5
   until: ts_up.status in [200, 301, 302, 401]
 
+# nilgiri's base image already has this directory (under its own /opt/nilgiri
+# name, shared across every role that stages something there); a stock box
+# doesn't, so create our renamed /opt/tlo equivalent here.
+- name: Ensure /opt/tlo exists
+  ansible.builtin.file:
+    path: /opt/tlo
+    state: directory
+    mode: "0755"
+  become: true
+
 - name: Stage the provisioning helper into the jupyter container
   ansible.builtin.copy:
     src: provision_mythic.py
-    dest: /opt/nilgiri/provision_mythic.py
+    dest: /opt/tlo/provision_mythic.py
     mode: "0755"
   become: true
 
 - name: Push helper into jupyter
   ansible.builtin.command:
-    cmd: docker cp /opt/nilgiri/provision_mythic.py mythic_jupyter:/tmp/provision_mythic.py
+    cmd: docker cp /opt/tlo/provision_mythic.py mythic_jupyter:/tmp/provision_mythic.py
   become: true
   changed_when: false
 
@@ -278,7 +288,7 @@
 - name: Stage the boot-time re-tag script
   ansible.builtin.template:
     src: retag.sh.j2
-    dest: /opt/nilgiri/retag.sh
+    dest: /opt/tlo/retag.sh
     mode: "0755"
   become: true
 

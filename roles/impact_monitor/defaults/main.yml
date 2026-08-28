@@ -13,7 +13,7 @@
 im_listen_addr: '0.0.0.0'
 im_listen_port: 8099
 im_state_dir: /var/lib/nilgiri-impact
-im_script_path: /opt/nilgiri_impact_monitor.py
+im_script_path: /opt/tlo_impact_monitor.py
 im_service_name: nilgiri-impact-monitor.service
 
 # Hosts the objectives are evaluated over. Ids are the ansible inventory names;

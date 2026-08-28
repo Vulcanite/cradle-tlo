@@ -31,7 +31,7 @@ mythic_internal_host: mythic_nginx
 mythic_agent: poseidon
 mythic_c2_profile: http
 mythic_beachhead_callback_host: "http://127.0.0.1"   # co-located w/ teamserver
-mythic_beachhead_payload: /opt/nilgiri/beachhead
+mythic_beachhead_payload: /opt/tlo/beachhead
 
 # Flags -- overridden by the playbook from flags/manifest.yaml.
 mythic_flags:

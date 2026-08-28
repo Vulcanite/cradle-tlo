@@ -15,7 +15,7 @@ for _ in $(seq 1 30); do
 done
 
 # jupyter's /tmp is ephemeral -- re-push the helper from its host copy.
-docker cp /opt/nilgiri/provision_mythic.py mythic_jupyter:/tmp/provision_mythic.py
+docker cp /opt/tlo/provision_mythic.py mythic_jupyter:/tmp/provision_mythic.py
 
 for _ in $(seq 1 30); do
   if docker exec mythic_jupyter python3 /tmp/provision_mythic.py retag-from-existing \
