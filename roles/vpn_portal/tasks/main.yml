@@ -145,16 +145,21 @@
   register: vpn_portal_iface_detect
   changed_when: false
 
-- name: Assert every segment iface was found
-  ansible.builtin.assert:
-    that: item.stdout | length > 0
-    fail_msg: >-
+# Not every deployment of this role wires up every segment in
+# vpn_portal_pivot_segments (e.g. a Linux-only subset range may drop a
+# segment whose only real hosts are Windows) -- a missing route just means
+# that segment isn't part of this topology, not a misconfiguration. Warn
+# rather than fail; downstream tasks filter out unmatched segments below.
+- name: Warn about any segment with no matching interface
+  ansible.builtin.debug:
+    msg: >-
       No interface has a route to {{ item.item.cidr }} (segment
-      {{ item.item.label }}). Did vms.json's extra_nets land on this
-      VM? Check `virsh domiflist nilgiri-vpn-portal` and `ip -br addr`.
+      {{ item.item.label }}) -- skipping it. If this segment should exist
+      on this host, check `virsh domiflist` and `ip -br addr`.
   loop: "{{ vpn_portal_iface_detect.results }}"
   loop_control:
     label: "{{ item.item.label }} -> {{ item.stdout | default('MISSING') }}"
+  when: item.stdout | length == 0
 
 - name: MASQUERADE OpenVPN tunnel traffic out each segment iface
   ansible.builtin.iptables:
@@ -165,7 +170,7 @@
     jump: MASQUERADE
     state: present
     comment: "nilgiri-pivot-{{ item.item.label }}"
-  loop: "{{ vpn_portal_iface_detect.results }}"
+  loop: "{{ vpn_portal_iface_detect.results | selectattr('stdout', '!=', '') | list }}"
   loop_control:
     label: "{{ item.item.label }} ({{ item.stdout }})"
 
@@ -177,7 +182,7 @@
     jump: ACCEPT
     state: present
     comment: "nilgiri-pivot-fwd-out-{{ item.item.label }}"
-  loop: "{{ vpn_portal_iface_detect.results }}"
+  loop: "{{ vpn_portal_iface_detect.results | selectattr('stdout', '!=', '') | list }}"
   loop_control:
     label: "{{ item.item.label }} ({{ item.stdout }})"
 
@@ -192,7 +197,7 @@
     ctstate: ESTABLISHED,RELATED
     jump: ACCEPT
     state: absent
-  loop: "{{ vpn_portal_iface_detect.results }}"
+  loop: "{{ vpn_portal_iface_detect.results | selectattr('stdout', '!=', '') | list }}"
   loop_control:
     label: "{{ item.item.label }} ({{ item.stdout }})"
 
@@ -208,7 +213,7 @@
     jump: ACCEPT
     state: present
     comment: "nilgiri-pivot-fwd-in-{{ item.item.label }} (all TCP ports)"
-  loop: "{{ vpn_portal_iface_detect.results }}"
+  loop: "{{ vpn_portal_iface_detect.results | selectattr('stdout', '!=', '') | list }}"
   loop_control:
     label: "{{ item.item.label }} ({{ item.stdout }})"
 
