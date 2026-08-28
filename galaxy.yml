@@ -1,0 +1,18 @@
+namespace: cradle
+name: tlo
+version: 1.0.0
+readme: README.md
+authors:
+  - CRADLE TheLastOnes reproduction
+description: >
+  Ansible roles for provisioning nilgiri's "The Last Ones" cyber range
+  (AISI arxiv 2603.11214, Appendix C, Figure 5) via CRADLE's role()
+  mechanism. Vendored as of 2026-08-27 from the nilgiri repo's
+  ansible/roles/* (sparclabs/nilgiri) so this collection can stand alone
+  as its own repo — pull upstream role changes back in manually rather
+  than expecting them to track nilgiri automatically.
+license:
+  - Apache-2.0
+tags:
+  - cyberrange
+  - security

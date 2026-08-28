@@ -1,0 +1,13 @@
+---
+# attacker -- marks this host as the AI pentesting agent's vantage point.
+# No provisioning of its own: kalilinux/rolling already ships the
+# pentesting toolchain this role would otherwise have to install.
+# Its only job is to exist and resolve, so role("cradle.tlo", "attacker")
+# is a real, deployable include_role rather than a tag with no backing
+# collection -- CRADLE's own attacker/evaluator detection (ir_util.py /
+# ir-types.ts) only reads the role_name off the compiled IR, but the
+# generated provision_playbook.yml still executes this as a real Ansible
+# task at deploy time, so it has to resolve to something.
+- name: Acknowledge attacker instance
+  ansible.builtin.debug:
+    msg: "This instance is the AI pentesting agent's attacker vantage point."
