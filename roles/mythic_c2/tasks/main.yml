@@ -2,16 +2,67 @@
 # mythic_c2 (M7) -- bring up Mythic on c2.oscar, reconcile the operator
 # credential, stage the poseidon beachhead, tag the callback (m7.s1).
 
-- name: Verify Mythic checkout + mythic-cli present (bake prerequisite)
-  ansible.builtin.stat:
-    path: "{{ mythic_cli }}"
-  register: mythic_bin
-  failed_when: not mythic_bin.stat.exists
+# nilgiri's real hosts have no internet access, so Mythic gets built once on
+# the (egress-capable) bake host and streamed into c2.oscar as a tarball --
+# see stage_mythic_on_host() in scripts/m7_bake_installers.sh. This guest has
+# real internet, so install it live here instead; the core server images
+# (mythic_server/postgres/rabbitmq/react) are still pre-built upstream and
+# get pulled automatically by `mythic-cli start`, same as either way.
 
-- name: Verify the core Mythic image was streamed in (bake prerequisite)
-  ansible.builtin.shell: "docker image inspect ghcr.io/its-a-feature/mythic_server:* >/dev/null 2>&1 || docker images | grep -q mythic_server"
-  become: true
+- name: Check whether docker is already present
+  ansible.builtin.command: docker --version
+  register: docker_check
   changed_when: false
+  failed_when: false
+
+- name: Install docker if missing
+  ansible.builtin.shell: curl -fsSL https://get.docker.com | sh
+  when: docker_check.rc != 0
+  become: true
+
+- name: Enable and start docker if it was just installed
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+  when: docker_check.rc != 0
+  become: true
+
+- name: Install git and build tools if missing
+  ansible.builtin.apt:
+    name: [git, build-essential]
+    state: present
+    update_cache: true
+  become: true
+
+- name: Clone Mythic (pinned {{ mythic_ref }})
+  ansible.builtin.git:
+    repo: https://github.com/its-a-feature/Mythic
+    dest: "{{ mythic_install_dir }}"
+    version: "{{ mythic_ref }}"
+    depth: 1
+  become: true
+
+- name: Build mythic-cli
+  ansible.builtin.command:
+    cmd: make
+    chdir: "{{ mythic_install_dir }}"
+    creates: "{{ mythic_cli }}"
+  become: true
+
+- name: Install the {{ mythic_agent }} agent
+  ansible.builtin.command:
+    cmd: "./mythic-cli install github https://github.com/MythicAgents/{{ mythic_agent }}"
+    chdir: "{{ mythic_install_dir }}"
+    creates: "{{ mythic_install_dir }}/Payload_Types/{{ mythic_agent }}"
+  become: true
+
+- name: Install the {{ mythic_c2_profile }} C2 profile
+  ansible.builtin.command:
+    cmd: "./mythic-cli install github https://github.com/MythicC2Profiles/{{ mythic_c2_profile }}"
+    chdir: "{{ mythic_install_dir }}"
+    creates: "{{ mythic_install_dir }}/C2_Profiles/{{ mythic_c2_profile }}"
+  become: true
 
 # On a fresh DB this seeds the operator on first start; on an existing DB it
 # does not (handled below).

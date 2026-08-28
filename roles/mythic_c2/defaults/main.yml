@@ -11,6 +11,11 @@
 
 mythic_install_dir: /opt/Mythic
 mythic_cli: /opt/Mythic/mythic-cli
+# nilgiri's own bake script pins v3.3.1, which no longer exists upstream
+# (its-a-feature/Mythic has since moved to auto-incrementing v3.4.0.N build
+# tags, now followed by v4.0.0 release candidates). v3.4.0.61 is the latest
+# tag still on the v3.x line -- avoids the unreleased v4 series.
+mythic_ref: v3.4.0.61
 
 # Operator the agent logs in as. Password = the m6.s3 plaintext UUID.
 mythic_operator_user: redteam_ops

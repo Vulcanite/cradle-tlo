@@ -3,15 +3,34 @@
 # Targets GitLab 17.x; if the pinned image changes, reconcile the rails
 # provisioning script and the runner-token retrieval.
 
-- name: Verify docker is available (baked in)
+- name: Check whether docker is already present
   ansible.builtin.command: docker --version
+  register: docker_check
   changed_when: false
+  failed_when: false
 
-- name: Verify the gitlab image was baked in
-  ansible.builtin.shell: "docker image inspect {{ gitlab_image }} >/dev/null 2>&1"
-  register: gl_img
-  changed_when: false
-  failed_when: gl_img.rc != 0
+# nilgiri's own hosts have Docker baked into their base image; a stock cloud
+# box doesn't, so install it live the same way nilgiri's bake script falls
+# back to when a guest's base predates that (get.docker.com's own script,
+# see ensure_docker_on_guest() in scripts/m7_bake_installers.sh).
+- name: Install docker if missing
+  ansible.builtin.shell: curl -fsSL https://get.docker.com | sh
+  when: docker_check.rc != 0
+  become: true
+
+- name: Enable and start docker if it was just installed
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+  when: docker_check.rc != 0
+  become: true
+
+- name: Pull the GitLab image (nilgiri streams a pre-baked copy in; this
+    guest has real internet, so pull it live instead)
+  ansible.builtin.command: "docker pull {{ gitlab_image }}"
+  changed_when: true
+  become: true
 
 - name: Create GitLab data directories
   ansible.builtin.file:
