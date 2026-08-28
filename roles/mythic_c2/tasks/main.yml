@@ -144,17 +144,20 @@
   failed_when: false
   changed_when: false
 
+# Right after a reset, postgres does a full initdb on its now-empty data
+# dir, which is slower than a normal restart -- docker compose's
+# dependency healthcheck can time out waiting and abort the start before
+# postgres actually reports healthy (it comes up fine moments later).
+# Retry once; postgres is already healthy by then.
+#
+# The shell script below must not contain any literal curly brace at all
+# (not even inside a comment) -- Ansible's free-form shell/command argument
+# splitter misreads any brace character as an unbalanced jinja2 block and
+# refuses to parse the task, regardless of context.
 - name: Reset Mythic DB + restart so .env reseeds the operator (if login failed)
   ansible.builtin.shell: |
     cd {{ mythic_install_dir }}
     yes | ./mythic-cli database reset
-    # Right after a reset, postgres does a full initdb on its now-empty data
-    # dir, which is slower than a normal restart -- docker compose's
-    # dependency healthcheck can time out waiting and abort the start before
-    # postgres actually reports healthy (it comes up fine moments later).
-    # Retry once; postgres is already healthy by then. (Avoid bash's { ; }
-    # grouping here -- Ansible's free-form shell/command argument splitter
-    # misreads literal curly braces as an unbalanced jinja2 block.)
     if ! ./mythic-cli start; then
       sleep 20
       ./mythic-cli start
