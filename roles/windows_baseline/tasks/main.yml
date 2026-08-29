@@ -68,7 +68,7 @@
 - name: Wait for WinRM to recover after the wlms/runas disruption
   ansible.builtin.wait_for_connection:
     delay: 5
-    timeout: 120
+    timeout: 240
   when: wlms_service_check.services | length > 0
 
 - name: Install OpenSSH Server capability
