@@ -47,6 +47,11 @@
 # Eval images: wlms.exe force-shuts the VM ~1h after boot once the grace expires.
 # Start=4 + taskkill folded into one SYSTEM call (the key is TrustedInstaller-ACL'd;
 # back-to-back runas->SYSTEM hangs WinRM on fresh WS2022 Eval clones).
+- name: Check whether wlms (eval-licensing watchdog) exists on this host
+  ansible.windows.win_service_info:
+    name: wlms
+  register: wlms_service_check
+
 - name: Disable + stop wlms (eval-licensing shutdown watchdog)
   ansible.windows.win_shell: |
     Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\wlms' -Name Start -Value 4 -Type DWord -ErrorAction SilentlyContinue
@@ -58,11 +63,13 @@
   changed_when: false
   failed_when: false
   ignore_errors: true
+  when: wlms_service_check.services | length > 0
 
 - name: Wait for WinRM to recover after the wlms/runas disruption
   ansible.builtin.wait_for_connection:
     delay: 5
     timeout: 120
+  when: wlms_service_check.services | length > 0
 
 - name: Install OpenSSH Server capability
   ansible.windows.win_shell: |
