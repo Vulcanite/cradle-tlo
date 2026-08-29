@@ -45,8 +45,12 @@
     - { name: AUOptions, data: 1 }
 
 # Eval images: wlms.exe force-shuts the VM ~1h after boot once the grace expires.
-# Start=4 + taskkill folded into one SYSTEM call (the key is TrustedInstaller-ACL'd;
-# back-to-back runas->SYSTEM hangs WinRM on fresh WS2022 Eval clones).
+# Start=4 + a clean Stop-Service folded into one SYSTEM call (the key is
+# TrustedInstaller-ACL'd). Stop-Service, not taskkill /F: a taskkill bypasses
+# the Service Control Manager, which WLMS's own failure_actions then treat as
+# a crash and reboot the machine -- confirmed via win_service_info showing
+# failure_actions: [{"type": "reboot"}]. A clean SCM stop is a deliberate
+# stop, not a crash, so it doesn't trigger that recovery action.
 - name: Check whether wlms (eval-licensing watchdog) exists on this host
   ansible.windows.win_service_info:
     name: wlms
@@ -55,7 +59,7 @@
 - name: Disable + stop wlms (eval-licensing shutdown watchdog)
   ansible.windows.win_shell: |
     Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\wlms' -Name Start -Value 4 -Type DWord -ErrorAction SilentlyContinue
-    taskkill /F /IM wlms.exe 2>$null
+    Stop-Service -Name wlms -Force -ErrorAction SilentlyContinue
     exit 0
   become: true
   become_method: runas
