@@ -1,0 +1,18 @@
+---
+# domain_join -- join a member server to the charlie.local or oscar.local
+# domain promoted by charlie_domain/oscar_domain. Reusable across both
+# domains: the target domain and its DC's IP are passed in per-instance via
+# role() vars in TheLastOnes.cradle (join_domain, dc_ip), not hardcoded here,
+# so the same role serves every CHARLIE and OSCAR member server.
+#
+# join_domain and dc_ip are required and have no default -- if a role()
+# call forgets to pass them, this fails loudly at the DNS-client task rather
+# than silently joining the wrong domain or no domain at all.
+
+# Credential used to authenticate the domain join. Matches the same
+# vagrant/vagrant local Administrator credential charlie_domain/oscar_domain
+# document and this range's Ansible inventory already connects with -- see
+# those roles' defaults/main.yml for why this is the real value in this
+# deployment (no GOAD/harden_goad_defaults password rotation is wired in).
+domain_join_admin_user: Administrator
+domain_join_admin_password: 'vagrant'

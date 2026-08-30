@@ -1,0 +1,24 @@
+---
+# oscar_domain -- runs on dc1.oscar. Promotes the oscar.local forest root DC.
+# Mirrors alpha_domain/charlie_domain's exact pattern. Single-host role (only
+# ever wired to DC1_OSCAR via role()), so no inventory_hostname dispatch is
+# needed here.
+
+- name: Promote dc1.oscar to the oscar.local forest root DC
+  microsoft.ad.domain:
+    dns_domain_name: '{{ oscar_dns_domain }}'
+    domain_netbios_name: '{{ oscar_netbios }}'
+    safe_mode_password: '{{ oscar_safe_mode_password }}'
+    reboot: true
+  register: oscar_promote
+
+- name: Wait for the AD DS / DNS stack to settle after promotion
+  ansible.windows.win_shell: |
+    $ErrorActionPreference = 'Stop'
+    Get-ADDomain {{ oscar_dns_domain }} | Out-Null
+    'DOMAIN-READY'
+  register: oscar_ready
+  retries: 30
+  delay: 10
+  until: "'DOMAIN-READY' in oscar_ready.stdout"
+  changed_when: false

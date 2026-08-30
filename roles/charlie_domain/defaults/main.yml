@@ -1,0 +1,20 @@
+---
+# charlie_domain -- promote the charlie.local AD forest on dc1.charlie.
+# Mirrors alpha_domain's pattern exactly. Not a GOAD fork: this range never
+# builds AD CS or any GOAD-default noise users -- ad_cs_harden already skips
+# cleanly when no CA is present, and every TLO-specific principal
+# (morgana.lefey, helpdesk.admin, etc.) is created by its own role
+# (asrep_bait_user, helpdesk_admin_user), not inherited from GOAD.
+
+charlie_dns_domain: charlie.local
+charlie_netbios: CHARLIE
+
+# DSRM / safe-mode password for the DC promotion.
+charlie_safe_mode_password: 'Dsrm-Charlie-2026!'
+
+# Domain Administrator password. microsoft.ad.domain preserves the local
+# Administrator password as the DA password on promotion, so this MUST equal
+# dc1.charlie's local Admin password (the base box's default, unless later
+# rotated by a hardening pass) -- keep in sync if rotated.
+charlie_domain_admin_user: Administrator
+charlie_domain_admin_password: 'vagrant'

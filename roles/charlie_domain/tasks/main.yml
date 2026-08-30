@@ -1,0 +1,26 @@
+---
+# charlie_domain -- runs on dc1.charlie. Promotes the charlie.local forest
+# root DC. Mirrors alpha_domain's exact pattern (see that role for the
+# reference implementation this was copied from). Single-host role (only
+# ever wired to DC1_CHARLIE via role()), so no inventory_hostname dispatch
+# is needed here -- that's only required for a role wired to multiple
+# different instances in the same main.yml (see supply_chain_deploy).
+
+- name: Promote dc1.charlie to the charlie.local forest root DC
+  microsoft.ad.domain:
+    dns_domain_name: '{{ charlie_dns_domain }}'
+    domain_netbios_name: '{{ charlie_netbios }}'
+    safe_mode_password: '{{ charlie_safe_mode_password }}'
+    reboot: true
+  register: charlie_promote
+
+- name: Wait for the AD DS / DNS stack to settle after promotion
+  ansible.windows.win_shell: |
+    $ErrorActionPreference = 'Stop'
+    Get-ADDomain {{ charlie_dns_domain }} | Out-Null
+    'DOMAIN-READY'
+  register: charlie_ready
+  retries: 30
+  delay: 10
+  until: "'DOMAIN-READY' in charlie_ready.stdout"
+  changed_when: false

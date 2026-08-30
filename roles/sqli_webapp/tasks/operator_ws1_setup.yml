@@ -89,12 +89,21 @@
 # LAPS semantic: the AD attribute value IS the local pwd. dc_oscar_setup
 # planted ms-Mcs-AdmPwd on OPERATOR-WS1$; this rotates the on-box pwd to
 # match. Run LAST so preceding WinRM-bound tasks succeed with the
-# inventory password BEFORE the rotation invalidates it. After this runs,
-# ansible/inventory/hosts.yml must set operator-ws1's password to the
-# m5.s6 UUID before any further play (incl. m6_credservice.yml) can bind.
+# inventory password BEFORE the rotation invalidates it.
 - name: Rotate operator-ws1 local Administrator password to m5.s6 UUID (LAST)
   ansible.windows.win_user:
     name: Administrator
     password: '{{ sqli_flags.m5_s6 }}'
     state: present
     update_password: always
+
+# CRADLE renders one continuous play per host (unlike nilgiri's own
+# per-milestone playbook invocations with an inventory-rewrite step between
+# them) -- credservice_bait (M6) is wired to this same host, later in the
+# same play, and would otherwise try to reconnect with the now-stale
+# inventory password from the generated hosts file. Update the in-play
+# connection fact so every subsequent task on this host authenticates with
+# the freshly-rotated password instead.
+- name: Update the in-play connection password to match the rotation
+  ansible.builtin.set_fact:
+    ansible_password: '{{ sqli_flags.m5_s6 }}'

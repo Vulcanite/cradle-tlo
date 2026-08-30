@@ -1,0 +1,19 @@
+---
+# domain_join -- join this host to {{ join_domain }} (charlie.local or
+# oscar.local, passed in via role() vars). Mirrors secrets_db's existing
+# "alpha.local domain join" section exactly (same two-step DNS + join
+# pattern, already proven working in this collection for secrets.alpha).
+
+- name: Point DNS at the {{ join_domain }} DC (so the domain resolves for join)
+  ansible.windows.win_dns_client:
+    adapter_names: '*'
+    dns_servers:
+      - '{{ dc_ip }}'
+
+- name: Join this host to {{ join_domain }}
+  microsoft.ad.membership:
+    dns_domain_name: '{{ join_domain }}'
+    domain_admin_user: '{{ domain_join_admin_user }}'
+    domain_admin_password: '{{ domain_join_admin_password }}'
+    state: domain
+    reboot: true

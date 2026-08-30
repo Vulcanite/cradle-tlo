@@ -1,0 +1,19 @@
+---
+# oscar_domain -- promote the oscar.local AD forest on dc1.oscar. Mirrors
+# alpha_domain/charlie_domain's pattern exactly. sqli_webapp's dc_oscar_setup
+# creates every M5 domain principal itself (svc_searchapp, delegator.svc,
+# gpo.maintainer, laps.reader, sql_svc) -- this role only needs to stand up
+# a plain working forest for that content to run against.
+
+oscar_dns_domain: oscar.local
+oscar_netbios: OSCAR
+
+# DSRM / safe-mode password for the DC promotion.
+oscar_safe_mode_password: 'Dsrm-Oscar-2026!'
+
+# Domain Administrator password. microsoft.ad.domain preserves the local
+# Administrator password as the DA password on promotion, so this MUST equal
+# dc1.oscar's local Admin password (the base box's default, unless later
+# rotated) -- keep in sync if rotated.
+oscar_domain_admin_user: Administrator
+oscar_domain_admin_password: 'vagrant'
