@@ -24,3 +24,14 @@
   delay: 10
   until: "'DOMAIN-READY' in charlie_ready.stdout"
   changed_when: false
+
+# asrep_bait_user/helpdesk_admin_user both place their domain users in this
+# OU (a GOAD-themed name, kept as-is for fidelity to the original naming)
+# rather than the default Users container -- a plain forest promotion
+# doesn't create it, so both roles would otherwise fail with "Directory
+# object not found" on their first New-ADUser call.
+- name: Create the Crownlands OU (asrep_bait_user/helpdesk_admin_user's target)
+  microsoft.ad.ou:
+    name: Crownlands
+    path: 'DC=charlie,DC=local'
+    state: present
