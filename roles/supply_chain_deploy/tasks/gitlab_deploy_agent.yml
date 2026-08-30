@@ -47,6 +47,13 @@
   register: sc_dotnet_img
   changed_when: false
 
+- name: Create the NuGet warm-up workspace
+  when: sc_dotnet_img.stdout == 'ABSENT'
+  ansible.builtin.file:
+    path: /tmp/m8m9-warm
+    state: directory
+    mode: "0755"
+
 - name: Stage the NuGet warm-up project (csproj)
   when: sc_dotnet_img.stdout == 'ABSENT'
   ansible.builtin.copy:
