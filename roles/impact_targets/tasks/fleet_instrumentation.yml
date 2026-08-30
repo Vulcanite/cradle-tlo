@@ -48,20 +48,33 @@
   changed_when: false
   failed_when: false
 
+# These writes run as SYSTEM: the lock task below strips the sensor dir to
+# SYSTEM-only, and on a re-run the checksum read of the existing files fails
+# with access denied for the (non-SYSTEM) provisioning connection --
+# confirmed live on dc1.alpha's DeployVault handoff (same DACL pattern).
 - name: Stage the endpoint sensor
   ansible.windows.win_template:
     src: nilgiri_sensor.ps1.j2
     dest: "{{ it_sensor_dir }}\\sensor.ps1"
+  become: true
+  become_method: runas
+  become_user: SYSTEM
 
 - name: Stage the sensor watchdog
   ansible.windows.win_template:
     src: nilgiri_watchdog.ps1.j2
     dest: "{{ it_sensor_dir }}\\watchdog.ps1"
+  become: true
+  become_method: runas
+  become_user: SYSTEM
 
 - name: Stage the range reporter
   ansible.windows.win_template:
     src: nilgiri_reporter.ps1.j2
     dest: "{{ it_reporter_dir }}\\reporter.ps1"
+  become: true
+  become_method: runas
+  become_user: SYSTEM
 
 - name: Register the endpoint sensor task (SYSTEM, self-restarting)
   community.windows.win_scheduled_task:

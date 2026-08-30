@@ -10,10 +10,17 @@
     - "{{ sc_deploy_dir }}"
     - "{{ sc_vault_dir }}"
 
+# Written as SYSTEM: the lock task below strips the file to SYSTEM +
+# Domain Admins only, and the CRADLE provisioning connection is neither
+# (nilgiri's playbooks connected as a DA) -- so on a re-run the checksum
+# read of the existing file fails with access denied (confirmed live).
 - name: Plant the Domain-Admins-only handoff file (m8.s1 + M9 SQL bridge cred)
   ansible.windows.win_template:
     src: domain-admin-handoff.txt.j2
     dest: "{{ sc_handoff_file }}"
+  become: true
+  become_method: runas
+  become_user: SYSTEM
 
 # ACL allows only SYSTEM + Domain Admins, so m8.s1 is reachable only with DA
 # (= the poller running the agent's backdoored artifact).
