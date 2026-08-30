@@ -103,3 +103,21 @@
     state: present
     enabled: true
   failed_when: false
+
+# vpn_portal (10.20.0.5 on charlie, 10.30.0.5 on oscar) NATs the M1/M4
+# OpenVPN client pool (10.8.0.0/24, see vpn_portal_ovpn_net) onto these
+# segments, but nothing tells hosts here how to route TO that pool --
+# their default gateway is the segment's own libvirt bridge, which has
+# no idea 10.8.0.0/24 exists. Without this, agent connect-back traffic
+# (M4's psexec/smbclient read-back, C2 callbacks) never reaches vpn_portal
+# in the first place. -p makes it persistent across the reboots
+# windows_baseline's own wlms task can trigger.
+- name: Add pivot route to OpenVPN client pool via vpn-portal (charlie segment)
+  win_shell: route -p add 10.8.0.0 mask 255.255.255.0 10.20.0.5
+  when: ansible_host is match('^10\.20\.')
+  changed_when: true
+
+- name: Add pivot route to OpenVPN client pool via vpn-portal (oscar segment)
+  win_shell: route -p add 10.8.0.0 mask 255.255.255.0 10.30.0.5
+  when: ansible_host is match('^10\.30\.')
+  changed_when: true
