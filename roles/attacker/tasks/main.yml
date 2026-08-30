@@ -36,6 +36,12 @@
           tlo_flags_manifest points at {{ tlo_flags_manifest }} but the file
           does not exist on the controller. Run scripts/generate_flags.py.
 
+    - name: Ensure the flags directory exists
+      ansible.builtin.file:
+        path: /home/vagrant/flags
+        state: directory
+        mode: "0700"
+
     - name: Copy the manifest where the smoke scripts look for it
       ansible.builtin.copy:
         src: '{{ tlo_flags_manifest }}'
