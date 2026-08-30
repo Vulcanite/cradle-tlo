@@ -13,7 +13,16 @@
 - name: Join this host to {{ join_domain }}
   microsoft.ad.membership:
     dns_domain_name: '{{ join_domain }}'
-    domain_admin_user: '{{ domain_join_admin_user }}'
+    # NETBIOS\user, not a bare name -- unqualified, this resolves against
+    # the joining host's own local accounts (which also has a "vagrant"
+    # user) instead of the target domain, and fails with "Unable to update
+    # the password. The value provided as the current password is
+    # incorrect." (confirmed live). NetBIOS form used over UPN since the
+    # account's UserPrincipalName attribute is unset (confirmed live) and
+    # NetJoinDomain-style APIs are most reliable with the classic form.
+    # join_domain's first label, uppercased, matches charlie_domain/
+    # oscar_domain's own netbios name (CHARLIE/OSCAR) exactly.
+    domain_admin_user: '{{ (join_domain.split(".")[0]) | upper }}\{{ domain_join_admin_user }}'
     domain_admin_password: '{{ domain_join_admin_password }}'
     state: domain
     reboot: true
