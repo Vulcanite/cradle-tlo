@@ -107,14 +107,33 @@
 
 # Rebuild the DACL from a fresh SDDL (SYSTEM, Administrators, morgana) so a
 # user re-create with a new SID can't leave a stale SID-keyed ACE in place.
-- name: Sanity-check the AS-REP user's SID was passed in by the playbook
+# The SID is resolved from AD at runtime (this host is domain-joined by the
+# time this role runs) rather than imported as a cross-host fact: CRADLE's
+# generated inventory keys hosts by IP, so hostvars['DC1_CHARLIE']-style
+# lookups cannot resolve, and cross-host facts don't survive isolated
+# --limit runs (no fact caching). A playbook-passed
+# smb_fileserver_asrep_user_sid still wins when defined.
+- name: Resolve the AS-REP user's SID from AD (unless already provided)
+  when: smb_fileserver_asrep_user_sid is not defined
+  ansible.windows.win_shell: |
+    $nt = New-Object System.Security.Principal.NTAccount('{{ smb_fileserver_asrep_user_domain }}', '{{ smb_fileserver_asrep_user_sam }}')
+    $nt.Translate([System.Security.Principal.SecurityIdentifier]).Value
+  register: smb_fileserver_sid_lookup
+  changed_when: false
+
+- name: Adopt the runtime-resolved SID
+  when: smb_fileserver_asrep_user_sid is not defined
+  ansible.builtin.set_fact:
+    smb_fileserver_asrep_user_sid: "{{ smb_fileserver_sid_lookup.stdout | trim }}"
+
+- name: Sanity-check the AS-REP user's SID is available
   ansible.builtin.assert:
     that:
       - smb_fileserver_asrep_user_sid is defined
       - smb_fileserver_asrep_user_sid | length > 0
     fail_msg: >-
-      smb_fileserver_asrep_user_sid must be provided by the playbook
-      (typically from hostvars['dc1.charlie']['asrep_bait_user_sid']).
+      Could not resolve the AS-REP user's SID: pass smb_fileserver_asrep_user_sid
+      or ensure this host can reach a charlie.local DC.
 
 - name: Reset ACL on morgana folder (replace DACL with a 3-ACE SDDL)
   ansible.windows.win_shell: |
