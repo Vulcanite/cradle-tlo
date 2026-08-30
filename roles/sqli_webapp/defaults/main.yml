@@ -157,6 +157,12 @@ sqli_m5s3_path: 'C:\Users\Public\m5s3.txt'
 # --- M6 host (operator-ws1) -- reached only via the m5.s6 LAPS admin ---
 sqli_operator_ws_host: operator-ws1
 sqli_operator_ws_fqdn: operator-ws1.oscar.local
+# The OperatorWS1 VM's actual Windows hostname (the win-10 box keeps the
+# CRADLE instance name verbatim, unlike the win-2019 boxes' DC1-OSCAR
+# style); the AD computer object created at join is keyed on it, so the
+# LAPS keep-list / plant / grant tasks must use exactly this name
+# (verified live: hostname is "OperatorWS1").
+operator_ws_actual_name: OperatorWS1
 
 # --- LAPS (legacy, ms-Mcs-AdmPwd) ---
 # Same live-download rationale as the SQL Server installers above.
