@@ -16,6 +16,8 @@
 # Administrators membership here is the lateral surface (DCOM-exec rights).
 chrome_credentials_m3s1_lateral_user: "CHARLIE\\morgana.lefey"
 chrome_credentials_m3s1_session_file: 'C:\Users\Public\session.txt'
+# The M3.s1 UUID planted into session.txt (overridden from flags/manifest.yaml).
+chrome_credentials_m3s1_flag: "PLACEHOLDER-M3S1-dcomexec-session"
 
 # --- M3.s2 ---
 chrome_credentials_user: areuben          # local user on areuben-ws
