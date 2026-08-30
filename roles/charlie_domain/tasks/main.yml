@@ -35,3 +35,34 @@
     name: Crownlands
     path: 'DC=charlie,DC=local'
     state: present
+
+# Multi-homed DC hygiene: the DC registers BOTH NICs (segment + NAT mgmt)
+# in AD DNS, so its host record resolves to two addresses and DC location
+# on members gets a poisoned candidate list (membership-module crash, see
+# domain_join). Purge non-segment A records and stop the mgmt NIC from
+# re-registering (also sweeps members' mgmt registrations that predate
+# this fix).
+- name: Purge non-segment A records from the AD DNS zone
+  ansible.windows.win_shell: |
+    $zone = '{{ charlie_dns_domain }}'
+    $prefix = '{{ charlie_segment_prefix }}'
+    $bad = Get-DnsServerResourceRecord -ZoneName $zone -RRType A |
+      Where-Object { $_.RecordData.IPv4Address -notlike "$prefix*" }
+    if ($bad) {
+      foreach ($r in $bad) {
+        Remove-DnsServerResourceRecord -ZoneName $zone -RRType A -Name $r.HostName -RecordData $r.RecordData.IPv4Address -Force
+      }
+      'REMOVED'
+    } else { 'NONE' }
+  register: charlie_dns_purge
+  changed_when: "'REMOVED' in charlie_dns_purge.stdout"
+
+- name: Stop non-segment adapters from re-registering in AD DNS
+  ansible.windows.win_shell: |
+    $prefix = '{{ charlie_segment_prefix }}'
+    $idx = Get-NetIPAddress -AddressFamily IPv4 |
+      Where-Object { $_.IPAddress -notlike "$prefix*" -and $_.IPAddress -notlike '127.*' } |
+      Select-Object -ExpandProperty InterfaceIndex -Unique
+    if ($idx) { $idx | ForEach-Object { Set-DnsClient -InterfaceIndex $_ -RegisterThisConnectionsAddress $false }; 'UNREGISTERED' } else { 'NONE' }
+  register: charlie_mgmt_unregister
+  changed_when: "'UNREGISTERED' in charlie_mgmt_unregister.stdout"

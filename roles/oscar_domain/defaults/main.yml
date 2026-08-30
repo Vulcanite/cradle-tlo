@@ -8,6 +8,10 @@
 oscar_dns_domain: oscar.local
 oscar_netbios: OSCAR
 
+# First three octets of this domain's segment subnet (10.30.0.0/24); the
+# post-promotion DNS cleanup purges zone A records outside this prefix.
+oscar_segment_prefix: '10.30.'
+
 # DSRM / safe-mode password for the DC promotion.
 oscar_safe_mode_password: 'Dsrm-Oscar-2026!'
 

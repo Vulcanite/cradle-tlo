@@ -4,11 +4,47 @@
 # "alpha.local domain join" section exactly (same two-step DNS + join
 # pattern, already proven working in this collection for secrets.alpha).
 
-- name: Point DNS at the {{ join_domain }} DC (so the domain resolves for join)
+# Scope DNS to the segment adapter only. Pointing '*' (including the
+# vagrant-libvirt NAT mgmt NIC) at the segment DC wedges Windows'
+# multi-homed resolver: implicit queries time out, DC location fails with
+# ERROR_NO_SUCH_DOMAIN, and the membership module's state check crashes
+# with "not joined or the domain cannot be contacted" (confirmed live on
+# fs.charlie). The mgmt NIC keeps its DHCP resolver so internet egress
+# (live installer downloads) stays direct.
+- name: Find the segment adapter (holds an IP in the DC's subnet)
+  ansible.windows.win_shell: |
+    $prefix = ('{{ dc_ip }}' -split '\.')[0..2] -join '.'
+    $ip = Get-NetIPAddress -AddressFamily IPv4 |
+      Where-Object { $_.IPAddress -like "$prefix.*" -and $_.IPAddress -ne '{{ dc_ip }}' } |
+      Select-Object -First 1
+    if (-not $ip) { throw "No adapter with an IP in $prefix.0/24" }
+    (Get-NetAdapter -InterfaceIndex $ip.InterfaceIndex).Name
+  register: domain_join_segment_adapter
+  changed_when: false
+
+- name: Point segment-adapter DNS at the {{ join_domain }} DC
   ansible.windows.win_dns_client:
-    adapter_names: '*'
+    adapter_names: '{{ domain_join_segment_adapter.stdout | trim }}'
     dns_servers:
       - '{{ dc_ip }}'
+
+# Repair hosts joined before this fix: the old '*' task statically pointed
+# the mgmt NIC at the DC too. Reset any non-segment adapter still holding
+# the DC back to DHCP (no-op on fresh hosts and after one repair).
+- name: Restore DHCP DNS on non-segment adapters still pointing at the DC
+  ansible.windows.win_shell: |
+    $prefix = ('{{ dc_ip }}' -split '\.')[0..2] -join '.'
+    $bad = Get-NetIPAddress -AddressFamily IPv4 |
+      Where-Object { $_.IPAddress -notlike "$prefix*" -and $_.IPAddress -notlike '127.*' } |
+      Select-Object -ExpandProperty InterfaceIndex -Unique
+    $reset = $false
+    foreach ($i in $bad) {
+      $cur = (Get-DnsClientServerAddress -InterfaceIndex $i -AddressFamily IPv4).ServerAddresses
+      if ($cur -contains '{{ dc_ip }}') { Set-DnsClientServerAddress -InterfaceIndex $i -ResetServerAddresses; $reset = $true }
+    }
+    if ($reset) { 'RESET' } else { 'NONE' }
+  register: domain_join_dns_repair
+  changed_when: "'RESET' in domain_join_dns_repair.stdout"
 
 - name: Join this host to {{ join_domain }}
   microsoft.ad.membership:

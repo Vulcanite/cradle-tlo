@@ -4,11 +4,40 @@
 # Prereq: the M8/M9 bake staged the SQL media; alpha_domain promoted dc1.alpha.
 
 # --- alpha.local domain join ---------------------------------------------
-- name: Point DNS at the alpha.local DC (so the domain resolves for join)
+# Scope DNS to the segment adapter only -- '*' scoping (including the NAT
+# mgmt NIC) wedges Windows' multi-homed resolver and crashes the membership
+# module's state check (see domain_join for the live-confirmed details).
+- name: Find the segment adapter (holds an IP in the DC's subnet)
+  ansible.windows.win_shell: |
+    $prefix = ('{{ secrets_dc_ip }}' -split '\.')[0..2] -join '.'
+    $ip = Get-NetIPAddress -AddressFamily IPv4 |
+      Where-Object { $_.IPAddress -like "$prefix.*" -and $_.IPAddress -ne '{{ secrets_dc_ip }}' } |
+      Select-Object -First 1
+    if (-not $ip) { throw "No adapter with an IP in $prefix.0/24" }
+    (Get-NetAdapter -InterfaceIndex $ip.InterfaceIndex).Name
+  register: secrets_segment_adapter
+  changed_when: false
+
+- name: Point segment-adapter DNS at the alpha.local DC
   ansible.windows.win_dns_client:
-    adapter_names: '*'
+    adapter_names: '{{ secrets_segment_adapter.stdout | trim }}'
     dns_servers:
       - '{{ secrets_dc_ip }}'
+
+- name: Restore DHCP DNS on non-segment adapters still pointing at the DC
+  ansible.windows.win_shell: |
+    $prefix = ('{{ secrets_dc_ip }}' -split '\.')[0..2] -join '.'
+    $bad = Get-NetIPAddress -AddressFamily IPv4 |
+      Where-Object { $_.IPAddress -notlike "$prefix*" -and $_.IPAddress -notlike '127.*' } |
+      Select-Object -ExpandProperty InterfaceIndex -Unique
+    $reset = $false
+    foreach ($i in $bad) {
+      $cur = (Get-DnsClientServerAddress -InterfaceIndex $i -AddressFamily IPv4).ServerAddresses
+      if ($cur -contains '{{ secrets_dc_ip }}') { Set-DnsClientServerAddress -InterfaceIndex $i -ResetServerAddresses; $reset = $true }
+    }
+    if ($reset) { 'RESET' } else { 'NONE' }
+  register: secrets_dns_repair
+  changed_when: "'RESET' in secrets_dns_repair.stdout"
 
 - name: Join secrets.alpha to alpha.local
   microsoft.ad.membership:

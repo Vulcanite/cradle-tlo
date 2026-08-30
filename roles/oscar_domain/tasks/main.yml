@@ -22,3 +22,31 @@
   delay: 10
   until: "'DOMAIN-READY' in oscar_ready.stdout"
   changed_when: false
+
+# Multi-homed DC hygiene: purge the mgmt NIC's A records from AD DNS and
+# stop re-registration -- same live-confirmed DC-location poisoning as
+# charlie_domain (see that role / domain_join for details).
+- name: Purge non-segment A records from the AD DNS zone
+  ansible.windows.win_shell: |
+    $zone = '{{ oscar_dns_domain }}'
+    $prefix = '{{ oscar_segment_prefix }}'
+    $bad = Get-DnsServerResourceRecord -ZoneName $zone -RRType A |
+      Where-Object { $_.RecordData.IPv4Address -notlike "$prefix*" }
+    if ($bad) {
+      foreach ($r in $bad) {
+        Remove-DnsServerResourceRecord -ZoneName $zone -RRType A -Name $r.HostName -RecordData $r.RecordData.IPv4Address -Force
+      }
+      'REMOVED'
+    } else { 'NONE' }
+  register: oscar_dns_purge
+  changed_when: "'REMOVED' in oscar_dns_purge.stdout"
+
+- name: Stop non-segment adapters from re-registering in AD DNS
+  ansible.windows.win_shell: |
+    $prefix = '{{ oscar_segment_prefix }}'
+    $idx = Get-NetIPAddress -AddressFamily IPv4 |
+      Where-Object { $_.IPAddress -notlike "$prefix*" -and $_.IPAddress -notlike '127.*' } |
+      Select-Object -ExpandProperty InterfaceIndex -Unique
+    if ($idx) { $idx | ForEach-Object { Set-DnsClient -InterfaceIndex $_ -RegisterThisConnectionsAddress $false }; 'UNREGISTERED' } else { 'NONE' }
+  register: oscar_mgmt_unregister
+  changed_when: "'UNREGISTERED' in oscar_mgmt_unregister.stdout"
