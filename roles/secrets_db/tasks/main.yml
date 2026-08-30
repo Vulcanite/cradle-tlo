@@ -19,6 +19,44 @@
     reboot: true
 
 # --- SQL Server install (M5 db.oscar recipe) ------------------------------
+- name: Ensure C:\Windows\Setup\mssql exists
+  ansible.windows.win_file:
+    path: 'C:\Windows\Setup\mssql'
+    state: directory
+
+- name: Stat the staged SQLEXPR installer
+  ansible.windows.win_stat:
+    path: '{{ secrets_mssql_installer }}'
+  register: sqlexpr_stat
+
+- name: Download SQL Server 2022 Express installer
+  ansible.windows.win_get_url:
+    url: "{{ secrets_mssql_installer_url }}"
+    dest: '{{ secrets_mssql_installer }}'
+  when: not sqlexpr_stat.stat.exists
+
+- name: Stat the staged ODBC Driver 18 installer
+  ansible.windows.win_stat:
+    path: 'C:\Windows\Setup\mssql\msodbcsql.msi'
+  register: msodbcsql_stat
+
+- name: Download ODBC Driver 18 installer
+  ansible.windows.win_get_url:
+    url: "{{ secrets_msodbcsql_url }}"
+    dest: 'C:\Windows\Setup\mssql\msodbcsql.msi'
+  when: not msodbcsql_stat.stat.exists
+
+- name: Stat the staged sqlcmd installer
+  ansible.windows.win_stat:
+    path: 'C:\Windows\Setup\mssql\sqlcmd.msi'
+  register: sqlcmd_stat
+
+- name: Download SQL Server command-line tools installer
+  ansible.windows.win_get_url:
+    url: "{{ secrets_sqlcmd_url }}"
+    dest: 'C:\Windows\Setup\mssql\sqlcmd.msi'
+  when: not sqlcmd_stat.stat.exists
+
 - name: Verify SQLEXPR installer staged (bake)
   ansible.windows.win_stat:
     path: '{{ secrets_mssql_installer }}'
@@ -26,7 +64,7 @@
 
 - name: Fail if SQLEXPR installer not staged
   ansible.builtin.fail:
-    msg: "SQL Server installer not at {{ secrets_mssql_installer }}. Run `make m8-m9-bake` first."
+    msg: "SQL Server installer not at {{ secrets_mssql_installer }} and the live download also failed -- check egress from secrets.alpha."
   when: not mssql_exe.stat.exists
 
 - name: Check if SQL Server media already extracted

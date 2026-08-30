@@ -18,8 +18,15 @@
 # -- so the M8 Domain Admin cannot Windows-auth as sysadmin and read
 # dbo.TargetSecrets directly, bypassing the SQLi. Seeding uses sa (SQL auth).
 
-# SQL Server install (same media + recipe as M5's db.oscar).
+# SQL Server install (same media + recipe as M5's db.oscar). nilgiri's own
+# offline bake (scripts/m8_m9_bake_installers.sh) stages these before boot;
+# CRADLE has no equivalent, so this role downloads them live instead (same
+# rationale as sqli_webapp's db_oscar_setup.yml -- see that role's
+# defaults/main.yml).
 secrets_mssql_installer: 'C:\Windows\Setup\mssql\SQLEXPR_x64_ENU.exe'
+secrets_mssql_installer_url: "https://download.microsoft.com/download/3/8/d/38de7036-2433-4207-8eae-06e247e17b25/SQLEXPR_x64_ENU.exe"
+secrets_msodbcsql_url: "https://go.microsoft.com/fwlink/?linkid=2249004"
+secrets_sqlcmd_url: "https://go.microsoft.com/fwlink/?linkid=2257938"
 secrets_mssql_setup_dir: 'C:\Windows\Setup\mssql\extracted'
 secrets_mssql_instance_name: MSSQLSERVER
 secrets_db_sa_password: 'V@ult-sa-2026-Str0ng!'
@@ -41,9 +48,13 @@ secrets_join_domain: alpha.local
 secrets_dc_ip: 10.40.0.10
 secrets_domain_admin_user: 'ALPHA\Administrator'
 # Must equal dc1.alpha's local Admin pw (= alpha.local DA pw after
-# promotion). After group-B harden, that is dc1_alpha_new_admin_password
-# from harden_goad_defaults/defaults/main.yml; keep in sync if rotated.
-secrets_domain_admin_password: 'Alpha-DC-igcay25I4HehHawGFKfu!'
+# promotion). harden_goad_defaults' password rotation is NOT wired into
+# this deployment (nothing here is GOAD-managed), so the real value is
+# still the box's own local Administrator/vagrant credential -- the same
+# one the generated Ansible inventory already connects with. If
+# harden_goad_defaults is ever wired in for real, this must change to
+# dc1_alpha_new_admin_password from that role's defaults/main.yml.
+secrets_domain_admin_password: 'vagrant'
 
 # Flags -- overridden by the m8_m9 playbook from flags/manifest.yaml.
 secrets_flags:

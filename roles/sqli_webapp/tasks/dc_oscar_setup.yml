@@ -227,13 +227,29 @@
   failed_when: da_nd.stdout is search('MISSING')
 
 # ---- 5. Legacy LAPS schema (LAPS.x64.msi -> Update-AdmPwdADSchema) ----
+- name: Ensure C:\Windows\Setup\laps exists
+  ansible.windows.win_file:
+    path: 'C:\Windows\Setup\laps'
+    state: directory
+
+- name: Stat the staged LAPS.x64.msi
+  ansible.windows.win_stat:
+    path: 'C:\Windows\Setup\laps\LAPS.x64.msi'
+  register: laps_msi_stat
+
+- name: Download LAPS.x64.msi (live; see defaults/main.yml)
+  ansible.windows.win_get_url:
+    url: "{{ sqli_laps_msi_url }}"
+    dest: 'C:\Windows\Setup\laps\LAPS.x64.msi'
+  when: not laps_msi_stat.stat.exists
+
 - name: Verify LAPS.x64.msi staged
   ansible.windows.win_stat:
     path: 'C:\Windows\Setup\laps\LAPS.x64.msi'
   register: laps_msi
 - name: Fail if LAPS.x64.msi not staged
   ansible.builtin.fail:
-    msg: "LAPS.x64.msi missing on dc1.oscar. Re-run `make m5-bake`."
+    msg: "LAPS.x64.msi missing on dc1.oscar and the live download also failed -- check egress from dc1.oscar."
   when: not laps_msi.stat.exists
 
 - name: Install legacy LAPS management toolkit (PowerShell module + AdmPwd.GPExtension)

@@ -135,11 +135,19 @@ sqli_db_app_password: "S3arch-Db-2026"
 # + sysadmin) on purpose, so a UNION SQLi can cross from dbo into
 # [internal].[secrets] and enable xp_cmdshell.
 
-# SQL Server install. The bake script staged SQLEXPR_x64_ENU.exe (266MB
-# layered cab) at the source dir; the role self-extracts to the install
-# dir at provisioning time. The extracted media (~600MB) contains
-# setup.exe which the actual install task invokes.
+# SQL Server install. nilgiri's own offline bake (scripts/m5_bake_installers.sh)
+# downloads these once and virt-customizes them into the COW volume before
+# boot; CRADLE has no equivalent offline-image step, so db_oscar_setup
+# instead downloads them live from the same official Microsoft URLs during
+# provisioning (victim nets are temporarily NAT'd for this, same pattern
+# chrome_credentials already relies on for its own installer). The role
+# self-extracts SQLEXPR_x64_ENU.exe (266MB layered cab) to the install dir;
+# the extracted media (~600MB) contains setup.exe which the actual install
+# task invokes.
 sqli_mssql_installer: 'C:\Windows\Setup\mssql\SQLEXPR_x64_ENU.exe'
+sqli_mssql_installer_url: "https://download.microsoft.com/download/3/8/d/38de7036-2433-4207-8eae-06e247e17b25/SQLEXPR_x64_ENU.exe"
+sqli_msodbcsql_url: "https://go.microsoft.com/fwlink/?linkid=2249004"
+sqli_sqlcmd_url: "https://go.microsoft.com/fwlink/?linkid=2257938"
 sqli_mssql_setup_dir: 'C:\Windows\Setup\mssql\extracted'
 sqli_mssql_instance_name: MSSQLSERVER
 
@@ -151,6 +159,8 @@ sqli_operator_ws_host: operator-ws1
 sqli_operator_ws_fqdn: operator-ws1.oscar.local
 
 # --- LAPS (legacy, ms-Mcs-AdmPwd) ---
+# Same live-download rationale as the SQL Server installers above.
+sqli_laps_msi_url: "https://download.microsoft.com/download/C/7/A/C7AAD914-A8A6-4904-88A1-29E657445D03/LAPS.x64.msi"
 # Legacy LAPS (LAPS.x64.msi, plaintext) used by dc_oscar_setup. Two
 # computer objects carry a planted LAPS value:
 #   svc-sentinel$  ms-Mcs-AdmPwd = m5.s5 UUID  (read grant: gpo.maintainer)
