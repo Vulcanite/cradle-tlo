@@ -382,15 +382,18 @@
     run_level: limited
     actions:
       - path: cmd.exe
+        # C:\Users\Public, NOT C:\Windows\Temp: on this box BUILTIN\Users
+        # only hold RX there (verified live via icacls), so a limited domain
+        # user's redirect fails with access denied (LastTaskResult=1).
         arguments: >-
-          /c echo %DATE% %TIME% > C:\Windows\Temp\delegator_cache.stamp
+          /c echo %DATE% %TIME% > C:\Users\Public\delegator_cache.stamp
     state: present
 
 - name: Kick the cache task once (so LSA secret is populated)
   ansible.windows.win_shell: |
     Start-ScheduledTask -TaskName M5DelegatorCacheTask
     Start-Sleep -Seconds 3
-    if (Test-Path 'C:\Windows\Temp\delegator_cache.stamp') { "task_fired_ok" } else { "TASK_DID_NOT_FIRE" }
+    if (Test-Path 'C:\Users\Public\delegator_cache.stamp') { "task_fired_ok" } else { "TASK_DID_NOT_FIRE" }
   register: delegator_cache
   changed_when: false
   failed_when: delegator_cache.stdout is not search('task_fired_ok')
