@@ -47,12 +47,15 @@
   no_log: true
 
 - name: Take a ClientAccessible volume shadow copy of the C drive
-  # cmd: (not free-form) -- the free-form form is split with a shlex-style
-  # parser, which reads the \' in 'C:\' as an escaped quote and then reports
-  # unbalanced quotes. Passing the script as a real option skips that splitting.
+  # The drive string is assembled without a literal backslash-before-quote
+  # ('C:\'): ansible's free-form argument splitter reads \' as an escaped
+  # quote and rejects the whole task with "unbalanced quotes" (confirmed
+  # live; the old cmd:-nested workaround failed differently -- win_shell
+  # has no cmd option and reports Missing required argument: _raw_params).
   ansible.windows.win_shell: |
       $ErrorActionPreference = 'Stop'
-      $r = ([wmiclass]'root\cimv2:Win32_ShadowCopy').Create('C:\', 'ClientAccessible')
+      $drive = $env:SystemDrive + [char]92
+      $r = ([wmiclass]'root\cimv2:Win32_ShadowCopy').Create($drive, 'ClientAccessible')
       if ($r.ReturnValue -ne 0) { throw "Win32_ShadowCopy.Create failed: $($r.ReturnValue)" }
       $sc = Get-CimInstance Win32_ShadowCopy | Where-Object { $_.ID -eq $r.ShadowID }
       "shadow_id=$($r.ShadowID) device=$($sc.DeviceObject)"

@@ -5,9 +5,9 @@
 - name: Refuse to provision with placeholder flag values
   ansible.builtin.assert:
     that:
-      - it_flags.m10_s1 is not match('PLACEHOLDER')
-      - it_flags.m10_s4 is not match('PLACEHOLDER')
-      - it_vault_master_secret is not match('PLACEHOLDER')
+      - it_flags.m10_s1 is not match('^(PLACEHOLDER|TESTVALUE)')
+      - it_flags.m10_s4 is not match('^(PLACEHOLDER|TESTVALUE)')
+      - it_vault_master_secret is not match('^(PLACEHOLDER|TESTVALUE)')
     fail_msg: >-
       impact_targets got placeholder flags -- run it from
       ansible/playbooks/m10_impact.yml so the UUIDs come from flags/manifest.yaml.
