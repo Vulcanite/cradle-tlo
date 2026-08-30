@@ -125,10 +125,29 @@
     path: 'C:\Windows\Setup\keepass\KeePassXC-Win64.msi'
   register: keepass_msi_stat
 
+- name: Ensure the keepass staging directory exists
+  when: not keepass_msi_stat.stat.exists
+  ansible.windows.win_file:
+    path: 'C:\Windows\Setup\keepass'
+    state: directory
+
+# Live-download fallback for the bake (this guest has real internet).
+- name: Download KeePassXC MSI if missing (m4-bake equivalent)
+  when: not keepass_msi_stat.stat.exists
+  ansible.windows.win_get_url:
+    url: 'https://github.com/keepassxreboot/keepassxc/releases/download/2.7.9/KeePassXC-2.7.9-Win64.msi'
+    dest: 'C:\Windows\Setup\keepass\KeePassXC-Win64.msi'
+    force: false
+
+- name: Re-check KeePassXC MSI is now staged
+  ansible.windows.win_stat:
+    path: 'C:\Windows\Setup\keepass\KeePassXC-Win64.msi'
+  register: keepass_msi_stat2
+
 - name: Fail if KeePassXC MSI not staged
   ansible.builtin.fail:
-    msg: "KeePassXC MSI not staged. Run `make m4-bake` first."
-  when: not keepass_msi_stat.stat.exists
+    msg: "KeePassXC MSI not staged and live download failed. Check egress."
+  when: not keepass_msi_stat2.stat.exists
 
 # KeePassXC links against the MSVC runtime; without it, keepassxc-cli
 # exits with STATUS_DLL_NOT_FOUND (0xC0000135). Install vc_redist first

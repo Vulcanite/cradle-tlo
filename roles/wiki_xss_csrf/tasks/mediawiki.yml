@@ -33,11 +33,20 @@
     path: 'C:\Windows\System32\vcruntime140.dll'
   register: vcr_stat
 
-- name: Stage vc_redist.x64.exe (from libvirt host staging dir)
+- name: Check whether vc_redist is already staged in the guest
+  ansible.windows.win_stat:
+    path: 'C:\Windows\Setup\wiki\vc_redist.x64.exe'
+  register: vcredist_guest_stat
+
+# Best-effort: the live-download loop in main.yml is the primary source for
+# this file now; the controller staging dir only exists on the original
+# nilgiri deployment host.
+- name: Stage vc_redist.x64.exe (controller staging, when present there)
   ansible.windows.win_copy:
     src: /mnt/vm-storage/cyber-range/staging/m4/vc_redist.x64.exe
     dest: 'C:\Windows\Setup\wiki\vc_redist.x64.exe'
-  when: not vcr_stat.stat.exists
+  when: not vcr_stat.stat.exists and not vcredist_guest_stat.stat.exists
+  failed_when: false
 
 - name: Install VC++ 2015-2022 Redistributable
   ansible.windows.win_package:

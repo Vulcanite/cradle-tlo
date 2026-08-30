@@ -97,13 +97,53 @@
   changed_when: true
 
 # --- M7.s3: deliver + ACL the git repo (history holds the deleted secret) -
-# Repo zip is built host-side by scripts/m7_bake_installers.sh PHASE A.
-- name: Verify the deploy-scripts repo zip was built (run m7-bake first)
+# Repo zip is built host-side by scripts/m7_bake_installers.sh PHASE A --
+# replicated here as a live fallback when the controller has no baked zip.
+# The two-commit history is the challenge: commit 1 carries deploy.env with
+# the PAT + m7.s3 flag, commit 2 removes it; the blob stays recoverable.
+- name: Check for the deploy-scripts repo zip
   ansible.builtin.stat:
     path: '{{ alpha_repo_zip }}'
   delegate_to: localhost
+  become: false
   register: repo_zip_local
-  failed_when: not repo_zip_local.stat.exists
+
+- name: Build the deploy-scripts repo zip (m7-bake equivalent)
+  when: not repo_zip_local.stat.exists
+  delegate_to: localhost
+  become: false
+  no_log: true
+  ansible.builtin.shell: |
+    set -e
+    zdir="$(dirname '{{ alpha_repo_zip }}')"
+    zfile="$(basename '{{ alpha_repo_zip }}')"
+    mkdir -p "$zdir"
+    rm -rf /tmp/tlo-m7-repo /tmp/tlo-m7-zipdir
+    mkdir -p /tmp/tlo-m7-repo
+    cd /tmp/tlo-m7-repo
+    git init -q -b main
+    git config user.email svc_deploy@alpha.local
+    git config user.name svc_deploy
+    printf '#!/usr/bin/env bash\necho "deploying $(git rev-parse --short HEAD) to alpha fleet"\n' > deploy.sh
+    printf '# infra/pipelines deploy scripts\nSecrets moved to GitLab CI variables.\n' > README.md
+    printf '# deploy.env -- local secrets (DO NOT COMMIT). Oops, committed anyway.\nGITLAB_PAT={{ alpha_gitlab_pat }}\nDEPLOY_FLAG={{ alpha_pivot_flags.m7_s3 }}\n' > deploy.env
+    git add -A
+    git commit -q -m "initial deploy scripts + local env"
+    git rm -q deploy.env
+    git commit -q -m "chore: remove committed secrets, move to CI variables"
+    mkdir -p /tmp/tlo-m7-zipdir
+    cp -r /tmp/tlo-m7-repo /tmp/tlo-m7-zipdir/deploy-scripts
+    (cd /tmp/tlo-m7-zipdir && zip -q -r "$zdir/$zfile" deploy-scripts)
+  args:
+    executable: /bin/bash
+
+- name: Verify the deploy-scripts repo zip is present
+  ansible.builtin.stat:
+    path: '{{ alpha_repo_zip }}'
+  delegate_to: localhost
+  become: false
+  register: repo_zip_local2
+  failed_when: not repo_zip_local2.stat.exists
 
 - name: Ensure C:\dev exists on ws.alpha
   ansible.windows.win_file:

@@ -16,7 +16,10 @@
 alpha_pivot_repo_dir: 'C:\dev\deploy-scripts'
 alpha_pivot_proof_file: 'C:\Users\Public\pivot-proof.txt'
 # Host-side zip built by scripts/m7_bake_installers.sh PHASE A; delivered over WinRM.
-alpha_repo_zip: /mnt/vm-storage/cyber-range/staging/m7/deploy-scripts.zip
+# (The role builds it itself when absent -- see the m7-bake equivalent task.)
+# Path is on this deployment's controller (swl); the nilgiri original used
+# /mnt/vm-storage/cyber-range/staging/m7/ on its own libvirt host.
+alpha_repo_zip: /mnt/hdd1/amish/TheLastOnes/staging/m7/deploy-scripts.zip
 
 # Local service account whose shell history leaks the CI token (M7.s4). Its
 # SMB password is set by the playbook to the m7.s1 UUID (alpha_svc_password

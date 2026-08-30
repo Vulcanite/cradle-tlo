@@ -8,17 +8,44 @@
 #   2. The helpdesk_admin_user role has run on dc1.charlie (so the
 #      domain user exists + the playbook has its SID as a hostvar)
 
-# ---- Sanity: stack staged? --------------------------------------------
+# ---- Sanity + live staging (m4-bake equivalent) ------------------------
+# The bake stages six pinned artifacts into C:\Windows\Setup\wiki; this
+# guest has real internet, so fetch anything missing directly (force: false
+# leaves existing files alone, matching the bake's idempotency markers).
+- name: Ensure the wiki staging directory exists
+  ansible.windows.win_file:
+    path: 'C:\Windows\Setup\wiki'
+    state: directory
+
+- name: Download any missing wiki stack components (m4-bake equivalent)
+  ansible.windows.win_get_url:
+    url: '{{ item.url }}'
+    dest: 'C:\Windows\Setup\wiki\{{ item.dest }}'
+    force: false
+  loop:
+    - dest: mediawiki.tar.gz
+      url: 'https://releases.wikimedia.org/mediawiki/1.43/mediawiki-1.43.3.tar.gz'
+    - dest: php-nts.zip
+      url: 'https://windows.php.net/downloads/releases/archives/php-8.3.13-nts-Win32-vs16-x64.zip'
+    - dest: mariadb.msi
+      url: 'https://archive.mariadb.org/mariadb-11.4.4/winx64-packages/mariadb-11.4.4-winx64.msi'
+    - dest: Auth_remoteuser-REL1_43.tar.gz
+      url: 'https://github.com/wikimedia/mediawiki-extensions-Auth_remoteuser/archive/refs/heads/REL1_43.tar.gz'
+    - dest: Lockdown-REL1_43.tar.gz
+      url: 'https://github.com/wikimedia/mediawiki-extensions-Lockdown/archive/refs/heads/REL1_43.tar.gz'
+    - dest: vc_redist.x64.exe
+      url: 'https://aka.ms/vs/17/release/vc_redist.x64.exe'
+
 - name: Verify staged wiki stack present
   ansible.windows.win_stat:
     path: 'C:\Windows\Setup\wiki\mediawiki.tar.gz'
   register: wiki_stack_staged
 
-- name: Fail if wiki stack not staged
+- name: Fail if wiki stack could not be staged
   ansible.builtin.fail:
     msg: >-
-      MediaWiki stack not staged at C:\Windows\Setup\wiki\. Run
-      `make m4-bake` first (or `bash scripts/m4_bake_installers.sh`).
+      MediaWiki stack missing at C:\Windows\Setup\wiki\ even after live
+      download -- check this guest's internet egress.
   when: not wiki_stack_staged.stat.exists
 
 # ---- MediaWiki stack on wiki.charlie ----------------------------------
