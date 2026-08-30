@@ -12,9 +12,14 @@ charlie_netbios: CHARLIE
 # DSRM / safe-mode password for the DC promotion.
 charlie_safe_mode_password: 'Dsrm-Charlie-2026!'
 
-# Domain Administrator password. microsoft.ad.domain preserves the local
-# Administrator password as the DA password on promotion, so this MUST equal
-# dc1.charlie's local Admin password (the base box's default, unless later
-# rotated by a hardening pass) -- keep in sync if rotated.
+# Not referenced by this role's own tasks (microsoft.ad.domain's promotion
+# call needs no domain-admin credential, only the DSRM password above) --
+# kept only for any downstream role that wants a documented reference to
+# the DA account. NOTE: the real Administrator (RID 500) password on this
+# box is not actually known (whatever the box image ships with, not
+# necessarily "vagrant") -- confirmed live that "vagrant" is a *separate*
+# domain principal DCPromo carries over from the pre-existing local
+# account, not a rename of Administrator itself. Do not assume this
+# default is correct without verifying against the actual box.
 charlie_domain_admin_user: Administrator
-charlie_domain_admin_password: 'vagrant'
+charlie_domain_admin_password: 'UNKNOWN-not-actually-vagrant'

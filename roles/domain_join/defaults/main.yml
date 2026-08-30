@@ -9,10 +9,15 @@
 # call forgets to pass them, this fails loudly at the DNS-client task rather
 # than silently joining the wrong domain or no domain at all.
 
-# Credential used to authenticate the domain join. Matches the same
-# vagrant/vagrant local Administrator credential charlie_domain/oscar_domain
-# document and this range's Ansible inventory already connects with -- see
-# those roles' defaults/main.yml for why this is the real value in this
-# deployment (no GOAD/harden_goad_defaults password rotation is wired in).
-domain_join_admin_user: Administrator
+# Credential used to authenticate the domain join. NOT the domain's
+# Administrator (RID 500) -- its real password is whatever the box image
+# ships with and isn't actually known here. A domain-join only needs *some*
+# valid domain credential (Windows lets any authenticated user join up to
+# ms-DS-MachineAccountQuota computers, default 10, with no admin rights
+# needed), and DCPromo carries the pre-existing local "vagrant" account
+# through into the new domain as its own principal with its own unchanged
+# password -- confirmed live on charlie.local (`vagrant` exists as a domain
+# user, password still "vagrant", same account this range's whole Ansible
+# inventory already authenticates with pre-promotion).
+domain_join_admin_user: vagrant
 domain_join_admin_password: 'vagrant'

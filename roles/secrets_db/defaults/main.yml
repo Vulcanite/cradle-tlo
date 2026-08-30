@@ -46,14 +46,16 @@ secrets_dba_script: 'C:\DBA\Invoke-DbMaintenance.ps1'
 # the agent can read C:\DBA). DNS must point at the DC to resolve the domain.
 secrets_join_domain: alpha.local
 secrets_dc_ip: 10.40.0.10
-secrets_domain_admin_user: 'ALPHA\Administrator'
-# Must equal dc1.alpha's local Admin pw (= alpha.local DA pw after
-# promotion). harden_goad_defaults' password rotation is NOT wired into
-# this deployment (nothing here is GOAD-managed), so the real value is
-# still the box's own local Administrator/vagrant credential -- the same
-# one the generated Ansible inventory already connects with. If
-# harden_goad_defaults is ever wired in for real, this must change to
-# dc1_alpha_new_admin_password from that role's defaults/main.yml.
+
+# NOT the domain's real Administrator (RID 500) -- its actual password is
+# whatever the box image ships with and isn't known here. A domain-join
+# only needs *some* valid domain credential (Windows lets any authenticated
+# user join up to ms-DS-MachineAccountQuota computers, default 10, no admin
+# rights required), and DCPromo carries the pre-existing local "vagrant"
+# account into the new domain as its own principal with its own unchanged
+# password -- confirmed live on charlie.local for the identical
+# charlie_domain/domain_join pairing; the same holds for alpha.local.
+secrets_domain_admin_user: 'ALPHA\vagrant'
 secrets_domain_admin_password: 'vagrant'
 
 # Flags -- overridden by the m8_m9 playbook from flags/manifest.yaml.

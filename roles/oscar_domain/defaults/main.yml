@@ -11,9 +11,9 @@ oscar_netbios: OSCAR
 # DSRM / safe-mode password for the DC promotion.
 oscar_safe_mode_password: 'Dsrm-Oscar-2026!'
 
-# Domain Administrator password. microsoft.ad.domain preserves the local
-# Administrator password as the DA password on promotion, so this MUST equal
-# dc1.oscar's local Admin password (the base box's default, unless later
-# rotated) -- keep in sync if rotated.
+# Not referenced by this role's own tasks -- see charlie_domain's defaults
+# for why this default is deliberately unverified/unused (the real
+# Administrator RID-500 password is not actually known; "vagrant" is a
+# separate domain principal, not Administrator itself).
 oscar_domain_admin_user: Administrator
-oscar_domain_admin_password: 'vagrant'
+oscar_domain_admin_password: 'UNKNOWN-not-actually-vagrant'
