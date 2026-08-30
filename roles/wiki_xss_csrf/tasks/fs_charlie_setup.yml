@@ -157,10 +157,14 @@
     path: 'C:\Windows\System32\vcruntime140.dll'
   register: vcr_stat_fs
 
-- name: Stage vc_redist.x64.exe to fs.charlie (from libvirt host)
-  ansible.windows.win_copy:
-    src: /mnt/vm-storage/cyber-range/staging/m4/vc_redist.x64.exe
+# Primary source: in-guest live download (the nilgiri controller staging
+# dir only exists on the original deployment host). force: false leaves an
+# already-staged copy alone.
+- name: Download vc_redist.x64.exe to fs.charlie (m4-bake equivalent)
+  ansible.windows.win_get_url:
+    url: 'https://aka.ms/vs/17/release/vc_redist.x64.exe'
     dest: 'C:\Windows\Setup\keepass\vc_redist.x64.exe'
+    force: false
   when: not vcr_stat_fs.stat.exists
 
 - name: Install VC++ 2015-2022 Redistributable on fs.charlie
