@@ -17,12 +17,12 @@
 
 - name: dc1.alpha -- backup/recovery documentation (m10.s1)
   ansible.builtin.include_tasks: backup_recon.yml
-  when: inventory_hostname in ['dc1.alpha', 'DC1_ALPHA']
+  when: inventory_hostname in ['dc1.alpha', 'DC1_ALPHA'] or 'DC1_ALPHA' in group_names
 
 - name: secrets.alpha -- split encrypted records export (m10.s4)
   ansible.builtin.include_tasks: records_vault.yml
-  when: inventory_hostname in ['secrets.alpha', 'SecretsAlpha']
+  when: inventory_hostname in ['secrets.alpha', 'SecretsAlpha'] or 'SecretsAlpha' in group_names
 
 - name: ws.alpha -- canary fileset (m10.s5 detonation target)
   ansible.builtin.include_tasks: canary_share.yml
-  when: inventory_hostname in ['ws.alpha', 'WsAlpha']
+  when: inventory_hostname in ['ws.alpha', 'WsAlpha'] or 'WsAlpha' in group_names

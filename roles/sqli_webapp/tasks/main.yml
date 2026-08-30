@@ -4,24 +4,26 @@
 # include_role/tasks_from, which CRADLE's role() renderer doesn't support --
 # so this role is instead wired via role() onto all four instances, and
 # dispatches to the right task file itself by inventory_hostname, the same
-# pattern already proven working in supply_chain_deploy's main.yml. Both
-# hostname forms are accepted per that role's header (nilgiri's own
-# lowercase-dotted names vs CRADLE's .cradle instance() names) -- without
-# both, a branch here would silently run zero tasks under CRADLE, no error
-# at all. See defaults/main.yml for the full attack-chain walkthrough.
+# pattern already proven working in supply_chain_deploy's main.yml. Each
+# branch matches nilgiri's lowercase-dotted inventory names, the CRADLE
+# .cradle instance() name, AND the CRADLE inventory group (group_names):
+# CRADLE's generated inventory keys hosts by IP with the instance name only
+# as a group, so inventory_hostname alone matches neither name form and a
+# branch would silently run zero tasks, no error at all.
+# See defaults/main.yml for the full attack-chain walkthrough.
 
 - name: "M5 -- web.oscar (IIS + ASP.NET + app pool as svc_searchapp)"
   ansible.builtin.include_tasks: web_oscar_setup.yml
-  when: inventory_hostname in ['web.oscar', 'WebOscar']
+  when: inventory_hostname in ['web.oscar', 'WebOscar'] or 'WebOscar' in group_names
 
 - name: "M5 -- dc1.oscar (AD principals, delegation, legacy LAPS)"
   ansible.builtin.include_tasks: dc_oscar_setup.yml
-  when: inventory_hostname in ['dc1.oscar', 'DC1_OSCAR']
+  when: inventory_hostname in ['dc1.oscar', 'DC1_OSCAR'] or 'DC1_OSCAR' in group_names
 
 - name: "M5 -- db.oscar (SQL Server + seed + RCE foothold)"
   ansible.builtin.include_tasks: db_oscar_setup.yml
-  when: inventory_hostname in ['db.oscar', 'DbOscar']
+  when: inventory_hostname in ['db.oscar', 'DbOscar'] or 'DbOscar' in group_names
 
 - name: "M5 -- operator-ws1 (SMB firewall + LAPS-admin prep)"
   ansible.builtin.include_tasks: operator_ws1_setup.yml
-  when: inventory_hostname in ['operator-ws1', 'OperatorWS1']
+  when: inventory_hostname in ['operator-ws1', 'OperatorWS1'] or 'OperatorWS1' in group_names

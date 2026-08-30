@@ -3,15 +3,16 @@
 # to gitlab.alpha (seed the build project) BEFORE dc1.alpha (the DA poller),
 # so the project exists when the poller first runs.
 #
-# Both hostname forms are accepted: nilgiri's own inventory names hosts
-# gitlab.alpha/dc1.alpha; CRADLE's generated inventory names them after the
-# .cradle instance() name instead (GitlabAlpha/DC1_ALPHA) -- without both,
-# this role silently runs zero tasks under CRADLE, no error at all.
+# Hostname forms accepted: nilgiri's own inventory names hosts
+# gitlab.alpha/dc1.alpha; CRADLE's generated inventory keys hosts by IP with
+# the instance() name only as a group -- so each branch also matches the
+# group via group_names, without which this role silently runs zero tasks
+# under CRADLE, no error at all.
 
 - name: "M8 -- seed apps/deploy-agent build project (gitlab.alpha)"
   ansible.builtin.include_tasks: gitlab_deploy_agent.yml
-  when: inventory_hostname in ['gitlab.alpha', 'GitlabAlpha']
+  when: inventory_hostname in ['gitlab.alpha', 'GitlabAlpha'] or 'GitlabAlpha' in group_names
 
 - name: "M8 -- DA deploy poller + DA-gated handoff (dc1.alpha)"
   ansible.builtin.include_tasks: dc1_deploy_poller.yml
-  when: inventory_hostname in ['dc1.alpha', 'DC1_ALPHA']
+  when: inventory_hostname in ['dc1.alpha', 'DC1_ALPHA'] or 'DC1_ALPHA' in group_names

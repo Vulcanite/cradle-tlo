@@ -211,7 +211,7 @@
     - GroupPolicyRefreshTimeOffset
     - GroupPolicyRefreshTimeDC
     - GroupPolicyRefreshTimeOffsetDC
-  when: inventory_hostname in ['dc1.alpha', 'secrets.alpha']
+  when: inventory_hostname in ['dc1.alpha', 'secrets.alpha'] or 'DC1_ALPHA' in group_names or 'SecretsAlpha' in group_names
 
 - name: Kick the instrumentation once so the monitor sees a baseline
   ansible.windows.win_shell: |

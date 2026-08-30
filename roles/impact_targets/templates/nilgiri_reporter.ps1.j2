@@ -16,7 +16,7 @@ $DeployDir    = '{{ it_deploy_dir }}'
 $SensorDir    = '{{ it_sensor_dir }}'
 $SensorTask   = '{{ it_sensor_task }}'
 $WatchdogTask = '{{ it_watchdog_task }}'
-{% if inventory_hostname == 'ws.alpha' %}
+{% if inventory_hostname == 'ws.alpha' or 'WsAlpha' in group_names %}
 $CanaryDir    = '{{ it_canary_dir }}'
 {% endif %}
 
@@ -85,7 +85,7 @@ $report = @{
     sensor_task  = Get-SensorState
 }
 
-{% if inventory_hostname == 'ws.alpha' %}
+{% if inventory_hostname == 'ws.alpha' or 'WsAlpha' in group_names %}
 # Canary fileset evidence for m10.s5: per-file hash + Shannon entropy, plus a
 # short head for anything low-entropy enough to be a ransom note.
 $files = New-Object System.Collections.Generic.List[object]
