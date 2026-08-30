@@ -69,6 +69,14 @@ im_flags:
   m10_s4: TESTVALUE-m10s4-records-vault
   m10_s5: TESTVALUE-m10s5-canary-detonation
 
+# Vault-rebuild inputs for the final-segment derivation in tasks/main.yml.
+# MUST mirror impact_targets' it_vault_* values exactly: the segment this
+# role derives has to be byte-identical to the archive the records_vault
+# build lays down on secrets.alpha, or the m10.s3 -> m10.s4 gate breaks.
+im_vault_rows: 12000
+im_vault_parts: 16
+im_vault_basename: records-export.gz
+
 # Base64 of the records export's final ciphertext segment, produced by the
 # impact_targets vault build and handed over by the m10 playbook. Served from
 # GET /vault/final-segment once m10.s3 is released. Empty = the vault gate is

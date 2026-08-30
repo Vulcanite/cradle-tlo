@@ -30,7 +30,35 @@
   become: true
 
 # The vault's final segment gates m10.s4 on m10.s3, so a missing/empty blob
-# would silently break the chain -- fail here instead.
+# would silently break the chain. Rather than importing it as a cross-host
+# fact from secrets.alpha (nilgiri's playbook could order that; CRADLE's
+# per-host play order cannot -- teamcity.alpha runs BEFORE secrets.alpha in
+# the generated playbook), rebuild it here on the control host from the same
+# deterministic inputs the records_vault build uses: same (master secret,
+# flag, rows, parts, basename) -> byte-identical archive -> identical final
+# segment (see files/build_vault_archive.py, copied from impact_targets --
+# KEEP THE TWO COPIES IN SYNC).
+- name: Rebuild the vault final segment from the same deterministic inputs
+  ansible.builtin.command: >-
+    {{ ansible_playbook_python }} {{ role_path }}/files/build_vault_archive.py
+    --master-secret '{{ it_vault_master_secret }}'
+    --flag '{{ im_flags.m10_s4 }}'
+    --rows {{ im_vault_rows }}
+    --parts {{ im_vault_parts }}
+    --basename {{ im_vault_basename }}
+    --out-dir /tmp/tlo-monitor-segment
+  delegate_to: localhost
+  become: false
+  run_once: true
+  register: im_vault_rebuild
+  changed_when: false
+  no_log: true
+
+- name: Adopt the rebuilt vault final segment
+  ansible.builtin.set_fact:
+    im_vault_final_segment_b64: "{{ (im_vault_rebuild.stdout | from_json).final_segment_b64 }}"
+  no_log: true
+
 - name: Assert the vault final segment was handed over
   ansible.builtin.assert:
     that:
