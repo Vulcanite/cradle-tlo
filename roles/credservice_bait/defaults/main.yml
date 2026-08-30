@@ -27,6 +27,13 @@ credservice_service_name: 'CredService'
 credservice_service_display: 'CredService Cache Refresher'
 credservice_service_description: 'Internal credential cache refresh worker (nilgiri M6 RE bait).'
 
+# m6-bake equivalent pipeline (see tasks/main.yml): artifacts stage on the
+# deployment controller, and the compile runs inside the warmed dotnet image
+# on gitlab.alpha. m6_s1 is threaded from flags/ansible_flags.yml as the
+# MSBuild -p:ServiceTag value.
+credservice_staging_dir: /mnt/hdd1/amish/TheLastOnes/staging/m6
+credservice_build_image: dotnet-sdk-offline:8.0
+
 # Recorded build provenance -- updated by scripts/m6_bake_installers.sh
 # after each rebuild. verify_hardening pins these for regression
 # detection (catches accidental fall-back to the old binary).

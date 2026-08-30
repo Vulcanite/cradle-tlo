@@ -5,6 +5,95 @@
 # SeDebug revoke) LAST -- the hardening removes the very rights provisioning
 # needs (SC_MANAGER_CREATE_SERVICE, Tasks-folder write).
 
+# ---- Build-or-stage the CredService artifacts (m6-bake equivalent) -------
+# Upstream's scripts/m6_bake_installers.sh compiles re_bait/CredService
+# (vendored under files/src/) with the dotnet 8 SDK and seeds
+# Constants.g.cs + key.bin from the flags manifest (seed_credservice.py).
+# Equivalent pipeline here: seed on the controller, publish inside
+# GitlabAlpha's warmed dotnet-sdk-offline image, stage the artifacts at
+# {{ credservice_staging_dir }} on the controller, then ship them below.
+- name: Check for staged CredService artifacts on the controller
+  ansible.builtin.stat:
+    path: '{{ credservice_staging_dir }}/CredService.exe'
+  delegate_to: localhost
+  become: false
+  register: cs_staged
+
+- name: Build CredService.exe + key.bin when not staged (m6-bake equivalent)
+  when: not cs_staged.stat.exists
+  block:
+    - name: Ensure the controller build dir exists
+      ansible.builtin.file:
+        path: '{{ credservice_staging_dir }}/src'
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      become: false
+
+    - name: Copy the CredService sources to the controller build dir
+      ansible.builtin.copy:
+        src: 'src/{{ item }}'
+        dest: '{{ credservice_staging_dir }}/src/{{ item }}'
+      loop:
+        - Program.cs
+        - CredService.csproj
+        - seed_credservice.py
+      delegate_to: localhost
+      become: false
+
+    - name: Seed Constants.g.cs + key.bin from the manifest
+      ansible.builtin.command: >-
+        {{ ansible_playbook_python }} {{ credservice_staging_dir }}/src/seed_credservice.py
+        --manifest {{ tlo_flags_manifest }}
+        --out-cs {{ credservice_staging_dir }}/src/Constants.g.cs
+        --out-key {{ credservice_staging_dir }}/key.bin
+      delegate_to: localhost
+      become: false
+      no_log: true
+      register: cs_seed
+
+    - name: Copy the source tree to GitlabAlpha for the container build
+      ansible.builtin.copy:
+        src: '{{ credservice_staging_dir }}/src/'
+        dest: /tmp/credservice-build
+      delegate_to: '{{ groups["GitlabAlpha"][0] }}'
+      become: false
+
+    - name: Publish CredService.exe in the warmed dotnet image (GitlabAlpha)
+      ansible.builtin.shell: >-
+        docker run --rm -v /tmp/credservice-build:/src -w /src
+        {{ credservice_build_image }}
+        bash -lc 'dotnet publish CredService.csproj -c Release -r win-x64
+        --self-contained true -p:PublishSingleFile=true
+        -p:ServiceTag={{ m6_s1 }} -v minimal -o /src/out'
+      delegate_to: '{{ groups["GitlabAlpha"][0] }}'
+      become: false
+      no_log: true
+      register: cs_publish
+
+    - name: Copy the built binary back to the controller staging dir
+      ansible.builtin.fetch:
+        src: /tmp/credservice-build/out/CredService.exe
+        dest: '{{ credservice_staging_dir }}/CredService.exe'
+        flat: true
+      delegate_to: '{{ groups["GitlabAlpha"][0] }}'
+      become: false
+
+- name: Ensure the CredService program dir exists
+  ansible.windows.win_file:
+    path: '{{ credservice_binary | win_dirname }}'
+    state: directory
+
+- name: Ship CredService.exe to the host
+  ansible.windows.win_copy:
+    src: '{{ credservice_staging_dir }}/CredService.exe'
+    dest: '{{ credservice_binary }}'
+
+- name: Ship key.bin to the host
+  ansible.windows.win_copy:
+    src: '{{ credservice_staging_dir }}/key.bin'
+    dest: '{{ credservice_key_file }}'
+
 - name: Verify CredService.exe baked
   ansible.windows.win_stat:
     path: '{{ credservice_binary }}'
