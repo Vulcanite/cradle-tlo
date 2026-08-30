@@ -150,6 +150,11 @@
   changed_when: false
 
 # ---- Browser bot: scheduled task, runs as CHARLIE\helpdesk.admin ------
+- name: Ensure the scripts staging dir exists
+  ansible.windows.win_file:
+    path: 'C:\Windows\Setup\Scripts'
+    state: directory
+
 - name: Stage the Edge headless browser-bot script
   ansible.windows.win_copy:
     src: wiki_browser_bot.ps1
