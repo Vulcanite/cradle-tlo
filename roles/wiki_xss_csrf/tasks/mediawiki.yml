@@ -281,6 +281,22 @@
     icacls "{{ wiki_install_dir }}" /grant "*S-1-5-11:(OI)(CI)(RX)" /T /C /Q | Select-Object -Last 1
   changed_when: false
 
+# MediaWiki's API dies with "No writable temporary directory could be
+# found" (TempFSFile) under the IIS app-pool identity, and PHP sessions
+# need the same writability: neither the profile-less app-pool TEMP nor
+# C:\Windows\Temp is writable by IIS_IUSRS (confirmed live). One dedicated
+# dir serves as $wgTmpDirectory (LocalSettings.php.j2) and the PHP
+# session.save_path (php.ini.j2).
+- name: Create the IIS-writable wiki cache/temp directory
+  ansible.windows.win_file:
+    path: '{{ wiki_install_dir }}\cache'
+    state: directory
+
+- name: Grant IIS_IUSRS Modify on the wiki cache/temp directory
+  ansible.windows.win_shell: |
+    icacls "{{ wiki_install_dir }}\cache" /grant "IIS_IUSRS:(OI)(CI)(M)" /Q | Select-Object -Last 1
+  changed_when: false
+
 # Both Anonymous + Windows Auth on the wiki app. Browsers that don't speak
 # Negotiate fall back to Anonymous (form-login via MediaWiki).
 - name: Enable both Anonymous and Windows Authentication on /wiki

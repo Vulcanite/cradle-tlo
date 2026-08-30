@@ -149,3 +149,6 @@ $wgEnableUploads = false;
 # content-seeding API calls are diagnosable on the host.
 $wgShowExceptionDetails = true;
 $wgDebugLogFile = "C:/Windows/Temp/wiki-debug.log";
+# IIS app-pool identity has no writable TEMP; without this MediaWiki's API
+# dies in TempFSFile with "No writable temporary directory could be found".
+$wgTmpDirectory = "C:/inetpub/wwwroot/wiki/cache";

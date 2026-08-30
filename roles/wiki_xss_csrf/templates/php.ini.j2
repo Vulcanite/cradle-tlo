@@ -30,10 +30,10 @@ extension=openssl
 extension=curl
 extension=gd
 
-; Explicit session path: MediaWiki's API token flow needs working sessions,
-; and the FastCGI context on IIS does not reliably fall back to the system
-; temp dir (confirmed live: action=query&meta=tokens -> RuntimeException).
-session.save_path = "C:\Windows\Temp"
+; Explicit session path: MediaWiki's API token flow needs working sessions.
+; The dir is created + ACL'd by mediawiki.yml (IIS_IUSRS Modify) -- neither
+; the profile-less app-pool TEMP nor C:\Windows\Temp is writable by IIS.
+session.save_path = "{{ wiki_install_dir }}\cache"
 
 ; Locale / charset
 default_charset = "UTF-8"
