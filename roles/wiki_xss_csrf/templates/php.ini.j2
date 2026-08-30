@@ -19,7 +19,9 @@ cgi.fix_pathinfo = 1
 fastcgi.impersonate = 1
 fastcgi.logging = 0
 
-; MediaWiki 1.43 required + recommended extensions
+; MediaWiki 1.43 required + recommended extensions. No xml/dom/simplexml
+; entries: in PHP 8 those are compiled in on Windows, and an extension=xml
+; line only produces a startup warning (no php_xml.dll exists).
 extension=mbstring
 extension=mysqli
 extension=intl
@@ -27,7 +29,11 @@ extension=fileinfo
 extension=openssl
 extension=curl
 extension=gd
-extension=xml
+
+; Explicit session path: MediaWiki's API token flow needs working sessions,
+; and the FastCGI context on IIS does not reliably fall back to the system
+; temp dir (confirmed live: action=query&meta=tokens -> RuntimeException).
+session.save_path = "C:\Windows\Temp"
 
 ; Locale / charset
 default_charset = "UTF-8"

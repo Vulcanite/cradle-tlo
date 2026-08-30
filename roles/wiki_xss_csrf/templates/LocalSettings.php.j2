@@ -142,3 +142,10 @@ $wgLanguageCode = "en";
 $wgSecretKey   = "{{ wiki_db_password | hash('sha256') }}";
 $wgUpgradeKey  = "charliewiki-upgrade";
 $wgEnableUploads = false;
+
+# ---- Lab diagnosability ----------------------------------------------
+# This is a deliberately vulnerable training wiki, not production: surface
+# exception details and keep a debug log so provisioning failures in the
+# content-seeding API calls are diagnosable on the host.
+$wgShowExceptionDetails = true;
+$wgDebugLogFile = "C:/Windows/Temp/wiki-debug.log";
