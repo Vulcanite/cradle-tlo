@@ -84,6 +84,11 @@
     path: '{{ credservice_binary | win_dirname }}'
     state: directory
 
+- name: Ensure the CredService data dir exists
+  ansible.windows.win_file:
+    path: '{{ credservice_data_dir }}'
+    state: directory
+
 - name: Ship CredService.exe to the host
   ansible.windows.win_copy:
     src: '{{ credservice_staging_dir }}/CredService.exe'
