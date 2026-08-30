@@ -50,8 +50,7 @@
   # cmd: (not free-form) -- the free-form form is split with a shlex-style
   # parser, which reads the \' in 'C:\' as an escaped quote and then reports
   # unbalanced quotes. Passing the script as a real option skips that splitting.
-  ansible.windows.win_shell:
-    cmd: |
+  ansible.windows.win_shell: |
       $ErrorActionPreference = 'Stop'
       $r = ([wmiclass]'root\cimv2:Win32_ShadowCopy').Create('C:\', 'ClientAccessible')
       if ($r.ReturnValue -ne 0) { throw "Win32_ShadowCopy.Create failed: $($r.ReturnValue)" }
@@ -113,8 +112,7 @@
   # As SYSTEM, with Stop: an unreadable plan previously made Select-String
   # return nothing, so this reported 'redacted' and the assert below passed
   # without ever reading the file. Now it fails loudly instead.
-  ansible.windows.win_shell:
-    cmd: |
+  ansible.windows.win_shell: |
       $ErrorActionPreference = 'Stop'
       if (-not (Test-Path -LiteralPath '{{ it_recovery_plan }}')) {
         throw 'recovery plan missing -- leak check would be vacuous'

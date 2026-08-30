@@ -317,8 +317,7 @@
 # cannot. Pre-step takes ownership + resets the DACL on orphaned files so
 # the subsequent win_copy can overwrite.
 - name: Reset orphaned m5.s3 file ACL (for re-runs after a prior failed run)
-  ansible.windows.win_shell:
-    cmd: |
+  ansible.windows.win_shell: |
       $f = '{{ sqli_m5s3_path }}'
       if (Test-Path $f) {
         & takeown /F $f /A 2>&1 | Out-Null
@@ -336,8 +335,7 @@
     force: true
 
 - name: Lock m5s3.txt ACL to local Administrators + SYSTEM (strip Users + Authenticated Users)
-  ansible.windows.win_shell:
-    cmd: |
+  ansible.windows.win_shell: |
       $f = '{{ sqli_m5s3_path }}'
       if (-not (Test-Path $f)) { Write-Error "m5s3.txt missing"; exit 1 }
       # takeown ensures WriteDAC; /inheritance:r strips inherited entries;

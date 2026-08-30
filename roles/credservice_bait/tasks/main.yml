@@ -175,8 +175,7 @@
 # Users; SYSTEM/NETWORK SERVICE aren't Auth Users for ACL eval, so the
 # Schedule service + boot task still run. Runs AFTER the boot task is created.
 - name: Restrict remote Task Scheduler creation (deny Authenticated Users write on Tasks)
-  ansible.windows.win_shell:
-    cmd: |
+  ansible.windows.win_shell: |
       $t = 'C:\Windows\System32\Tasks'
       # Add a Deny ACE (write/create only) for Authenticated Users (S-1-5-11);
       # leave the Allow ACEs so the step stays idempotent and reads are unaffected.

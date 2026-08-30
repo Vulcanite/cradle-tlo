@@ -113,8 +113,7 @@
   # nothing after the lock above, so the check reported "encrypted" with rc=0
   # and the assert below passed without ever opening a segment. Stop + an
   # explicit count make an unreadable vault fail loudly instead of vacuously.
-  ansible.windows.win_shell:
-    cmd: |
+  ansible.windows.win_shell: |
       $ErrorActionPreference = 'Stop'
       $files = @(Get-ChildItem -LiteralPath '{{ it_vault_dir }}' -File)
       if ($files.Count -eq 0) { throw 'no vault segments readable -- leak check would be vacuous' }

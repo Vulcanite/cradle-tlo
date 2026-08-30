@@ -28,8 +28,7 @@
 # The default ACL excludes NETWORK SMB logons (what the pivoted agent uses),
 # so grant Users:R to make m7.s2's "world-readable" semantic real over SMB.
 - name: Grant Users:R on pivot-proof.txt (so SMB network sessions can read)
-  ansible.windows.win_shell:
-    cmd: icacls "{{ alpha_pivot_proof_file }}" /grant 'Users:(R)' | Out-Null; icacls "{{ alpha_pivot_proof_file }}"
+  ansible.windows.win_shell: icacls "{{ alpha_pivot_proof_file }}" /grant 'Users:(R)' | Out-Null; icacls "{{ alpha_pivot_proof_file }}"
   register: pivot_acl
   changed_when: true
 

@@ -364,8 +364,7 @@
 # gate: gpo.maintainer reads ONLY svc-sentinel$ (s5); laps.reader reads
 # ONLY OPERATOR-WS1$ (s6).
 - name: Grant gpo.maintainer LAPS Read on svc-sentinel$ ONLY (M5.s5 gate)
-  ansible.windows.win_shell:
-    cmd: |
+  ansible.windows.win_shell: |
       Import-Module ActiveDirectory
       $dn = (Get-ADComputer -Identity '{{ sqli_sentinel_computer }}').DistinguishedName
       $sid = (Get-ADUser -Identity '{{ sqli_gpo_maintainer_account }}').SID
@@ -396,8 +395,7 @@
   failed_when: sentinel_read.stdout is not search('sentinel_laps_read_ok')
 
 - name: Grant laps.reader LAPS Read on OPERATOR-WS1$ ONLY (M5.s6 gate)
-  ansible.windows.win_shell:
-    cmd: |
+  ansible.windows.win_shell: |
       Import-Module ActiveDirectory
       $dn = (Get-ADComputer -Identity '{{ operator_ws_actual_name }}').DistinguishedName
       $sid = (Get-ADUser -Identity '{{ sqli_laps_reader_account }}').SID
