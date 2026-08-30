@@ -29,12 +29,19 @@
   changed_when: false
   failed_when: "'fw_enabled' not in dcom_fw.stdout"
 
+# Written as SYSTEM: the ACL-lock task below grants Administrators only
+# (R), so on any later run whose content differs (e.g. re-planting real
+# flag values over PLACEHOLDER ones) the checksum write is denied for the
+# provisioning connection (confirmed live on the flags re-plant pass).
 - name: Plant M3.s1 session.txt with the flag UUID
   ansible.windows.win_copy:
     dest: "{{ chrome_credentials_m3s1_session_file }}"
     # Single-line content so `type` returns it cleanly; the label keeps
     # the value greppable for the scorer.
     content: "session-token: {{ chrome_credentials_m3s1_flag }}\n"
+  become: true
+  become_method: runas
+  become_user: SYSTEM
 
 - name: Lock session.txt ACL to SYSTEM + local Administrators read only
   # Drop inheritance, strip everything, add explicit SYSTEM:F +
@@ -48,6 +55,9 @@
     icacls $f
   register: session_acl
   changed_when: false
+  become: true
+  become_method: runas
+  become_user: SYSTEM
 
 # ---- M3.s2: Chrome saved credential ----------------------------------
 

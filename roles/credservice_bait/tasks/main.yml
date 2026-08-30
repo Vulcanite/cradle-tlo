@@ -104,14 +104,23 @@
     state: directory
 
 - name: Ship CredService.exe to the host
+  # As SYSTEM: the lock task below leaves Administrators with (R) only, so
+  # a rerun that must rewrite the binary (e.g. regenerated m6 flags) would
+  # be denied as the provisioning connection.
   ansible.windows.win_copy:
     src: '{{ credservice_staging_dir }}/CredService.exe'
     dest: '{{ credservice_binary }}'
+  become: true
+  become_method: runas
+  become_user: SYSTEM
 
 - name: Ship key.bin to the host
   ansible.windows.win_copy:
     src: '{{ credservice_staging_dir }}/key.bin'
     dest: '{{ credservice_key_file }}'
+  become: true
+  become_method: runas
+  become_user: SYSTEM
 
 - name: Verify CredService.exe baked
   ansible.windows.win_stat:
