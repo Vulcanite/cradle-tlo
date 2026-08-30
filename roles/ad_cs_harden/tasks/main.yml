@@ -14,10 +14,6 @@
     name: CertSvc
   register: ad_cs_harden_certsvc
 
-- name: End play for this host if CertSvc absent
-  ansible.builtin.meta: end_host
-  when: ad_cs_harden_certsvc.services | length == 0
-
 - name: Delete ESC1 template object from AD Configuration NC
   ansible.windows.win_shell: |
     Import-Module ActiveDirectory -ErrorAction Stop
@@ -32,6 +28,7 @@
     }
   register: ad_cs_harden_esc1_delete
   changed_when: "'deleted' in ad_cs_harden_esc1_delete.stdout"
+  when: ad_cs_harden_certsvc.services | length > 0
 
 - name: Verify ESC1 template object no longer exists in AD
   ansible.windows.win_shell: |
@@ -44,12 +41,14 @@
     }
     'ok'
   changed_when: false
+  when: ad_cs_harden_certsvc.services | length > 0
 
 - name: Uninstall Adcs-Web-Enrollment role feature (closes ESC8)
   ansible.windows.win_feature:
     name: Adcs-Web-Enrollment
     state: absent
   register: ad_cs_harden_webenroll
+  when: ad_cs_harden_certsvc.services | length > 0
 
 - name: Verify Adcs-Web-Enrollment is absent
   ansible.windows.win_shell: |
@@ -57,6 +56,7 @@
     if ($f.Installed) { Write-Error 'Adcs-Web-Enrollment still installed'; exit 1 }
     'ok'
   changed_when: false
+  when: ad_cs_harden_certsvc.services | length > 0
 
 - name: Verify /certsrv no longer responds on HTTP
   ansible.windows.win_shell: |
@@ -77,3 +77,4 @@
       'ok'
     }
   changed_when: false
+  when: ad_cs_harden_certsvc.services | length > 0
