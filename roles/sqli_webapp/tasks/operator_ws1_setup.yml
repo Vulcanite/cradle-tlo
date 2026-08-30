@@ -102,8 +102,14 @@
 # them) -- credservice_bait (M6) is wired to this same host, later in the
 # same play, and would otherwise try to reconnect with the now-stale
 # inventory password from the generated hosts file. Update the in-play
-# connection fact so every subsequent task on this host authenticates with
-# the freshly-rotated password instead.
-- name: Update the in-play connection password to match the rotation
+# connection identity so every subsequent task on this host authenticates
+# as the freshly-rotated Administrator. Both keys are needed: nilgiri's
+# inventory already connected AS Administrator (a password-only update was
+# enough there), but CRADLE's generated inventory connects as vagrant --
+# without switching ansible_user too, the follow-up auth is
+# vagrant + Administrator's new password, which always fails (confirmed
+# live: "Failed to authenticate the user vagrant with negotiate").
+- name: Update the in-play connection identity to match the rotation
   ansible.builtin.set_fact:
+    ansible_user: Administrator
     ansible_password: '{{ sqli_flags.m5_s6 }}'
