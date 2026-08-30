@@ -205,10 +205,10 @@
     -FlagEntryTitle "{{ keepass_flag_entry_title }}"
     -FlagValue "{{ wiki_flags.m4_s4 }}"
     -KeePassCli "{{ keepass_cli_path.stdout | trim }}"
-    -BridgeEntryTitle "{{ keepass_bridge_entry_title | default('') }}"
-    -BridgeEntryUser  "{{ keepass_bridge_entry_user  | default('') }}"
-    -BridgeEntryPwd   "{{ keepass_bridge_entry_pwd   | default('') }}"
-    -BridgeEntryNotes "{{ keepass_bridge_entry_notes | default('') }}"
+    -BridgeEntryTitle "{{ keepass_bridge_entry_title }}"
+    -BridgeEntryUser  "{{ keepass_bridge_entry_user }}"
+    -BridgeEntryPwd   "{{ keepass_bridge_entry_pwd }}"
+    -BridgeEntryNotes "{{ keepass_bridge_entry_notes }}"
   args:
     creates: "{{ keepass_db_path }}"
 

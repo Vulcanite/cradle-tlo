@@ -112,6 +112,17 @@ keepass_db_path: 'C:\Shares\HR\passwords.kdbx'
 keepass_master_password: "Summer2024!"          # in rockyou.txt
 keepass_flag_entry_title: "domain-admin-handoff"
 
+# The M4 -> M5 bridge entry inside the kdbx: cracking the weak master and
+# reading this entry is what yields the web.oscar SQLi credential. MUST
+# mirror sqli_webapp's sqli_bridge_user* values exactly (keep in sync).
+# Defaults were previously absent, which rendered empty "" args that
+# PowerShell -File drops -> "Missing an argument for parameter
+# 'BridgeEntryTitle'" (confirmed live).
+keepass_bridge_entry_title: "oscar-helpdesk-portal"
+keepass_bridge_entry_user: "helpdesk.bridge"
+keepass_bridge_entry_pwd: "Helpdesk-Bridge-26!"
+keepass_bridge_entry_notes: "OSCAR helpdesk portal login (web.oscar /search)"
+
 # ---- flags (overridden by the playbook from manifest.yaml) ------------
 # Numbering after the simplification (5 -> 4):
 #   m4.s1  plant-malicious-payload
