@@ -146,6 +146,14 @@
   become: true
   register: runner_cfg
 
+- name: Pre-pull the runner helper image (bake equivalent)
+  # config.toml pins pull_policy=never for job/helper images, assuming the
+  # bake streamed the pinned helper tag in. This guest has real internet
+  # (see the live GitLab CE pull above), so fetch it live if absent.
+  ansible.builtin.shell: "docker image inspect {{ gitlab_helper_image }} >/dev/null 2>&1 || docker pull {{ gitlab_helper_image }}"
+  become: true
+  changed_when: false
+
 - name: Run the gitlab-runner container
   ansible.builtin.shell: |
     docker rm -f {{ gitlab_runner_container }} 2>/dev/null || true

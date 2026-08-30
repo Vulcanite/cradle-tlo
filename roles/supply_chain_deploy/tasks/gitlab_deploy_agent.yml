@@ -36,8 +36,55 @@
   ansible.builtin.debug:
     var: sc_prov.stdout_lines
 
-- name: Verify the offline dotnet image was streamed in (bake)
-  ansible.builtin.shell: "docker image inspect {{ sc_dotnet_image }} >/dev/null 2>&1"
+# Upstream's scripts/m8_m9_bake_installers.sh builds the offline image by
+# pulling the official sdk:8.0, running a throwaway self-contained win-x64
+# single-file publish (populating the NuGet cache with the win-x64
+# runtime/apphost + single-file bundler packs), then docker commit.
+# Replicated here as a live fallback -- this guest has real internet (same
+# rationale as gitlab_cicd's live GitLab CE pull instead of the baked copy).
+- name: Check for the offline dotnet SDK image
+  ansible.builtin.shell: "docker image inspect {{ sc_dotnet_image }} >/dev/null 2>&1 && echo PRESENT || echo ABSENT"
   register: sc_dotnet_img
   changed_when: false
-  failed_when: sc_dotnet_img.rc != 0
+
+- name: Stage the NuGet warm-up project (csproj)
+  when: sc_dotnet_img.stdout == 'ABSENT'
+  ansible.builtin.copy:
+    dest: /tmp/m8m9-warm/warm.csproj
+    content: |
+      <Project Sdk="Microsoft.NET.Sdk">
+        <PropertyGroup>
+          <OutputType>Exe</OutputType>
+          <TargetFramework>net8.0</TargetFramework>
+          <ImplicitUsings>enable</ImplicitUsings>
+          <Nullable>enable</Nullable>
+        </PropertyGroup>
+      </Project>
+
+- name: Stage the NuGet warm-up project (Program.cs)
+  when: sc_dotnet_img.stdout == 'ABSENT'
+  ansible.builtin.copy:
+    dest: /tmp/m8m9-warm/Program.cs
+    content: |
+      Console.WriteLine("nuget warm-up");
+
+- name: Warm and commit the offline dotnet SDK image (bake equivalent)
+  when: sc_dotnet_img.stdout == 'ABSENT'
+  ansible.builtin.shell: |
+    set -e
+    docker pull mcr.microsoft.com/dotnet/sdk:8.0
+    docker rm -f m8m9-nugetwarm >/dev/null 2>&1 || true
+    docker run --name m8m9-nugetwarm \
+      -v /tmp/m8m9-warm:/src -w /src \
+      mcr.microsoft.com/dotnet/sdk:8.0 \
+      bash -lc 'dotnet publish warm.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o /tmp/out'
+    docker commit m8m9-nugetwarm {{ sc_dotnet_image }}
+    docker rm -f m8m9-nugetwarm
+  register: sc_dotnet_warm
+  changed_when: true
+
+- name: Verify the offline dotnet SDK image is present
+  ansible.builtin.shell: "docker image inspect {{ sc_dotnet_image }} >/dev/null 2>&1"
+  register: sc_dotnet_img2
+  changed_when: false
+  failed_when: sc_dotnet_img2.rc != 0
