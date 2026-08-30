@@ -265,6 +265,21 @@
     reboot_timeout: 600
   when: laps_install.reboot_required | default(false)
 
+# Schema updates require Schema Admins; DCPromo adds the promoting account
+# to Domain/Enterprise Admins but NOT Schema Admins, so the provisioning
+# user hits "insufficient access rights" here (confirmed live). Membership
+# changes only surface on a fresh logon, so this must be a separate task
+# from the schema update itself.
+- name: Ensure the provisioning user can update the schema (Schema Admins)
+  ansible.windows.win_shell: |
+    $u = '{{ ansible_user | default("vagrant") }}'
+    if (-not (Get-ADPrincipalGroupMembership $u | Where-Object { $_.Name -eq 'Schema Admins' })) {
+      Add-ADGroupMember -Identity 'Schema Admins' -Members $u
+      'ADDED'
+    } else { 'PRESENT' }
+  register: laps_schema_admin
+  changed_when: "'ADDED' in laps_schema_admin.stdout"
+
 - name: Update AD schema for legacy LAPS (adds ms-Mcs-AdmPwd[ExpirationTime])
   ansible.windows.win_shell: |
     Import-Module AdmPwd.PS -ErrorAction Stop
