@@ -165,6 +165,7 @@
   become: true
   when: login_test.rc != 0
   changed_when: true
+  register: mythic_db_reset
 
 - name: Re-wait for teamserver after a reset
   ansible.builtin.uri:
@@ -247,6 +248,18 @@
   changed_when: true
 
 # --- beachhead implant ---------------------------------------------------
+# A DB reset wipes all callbacks AND the payload's registration context:
+# the pre-reset binary cannot check into the reset instance. Drop it so the
+# build+copy below (both `creates:`-guarded) actually rebuild against the
+# fresh Mythic (confirmed live: post-reset rerun skipped the rebuild and
+# the tag step failed with "no active callbacks to tag").
+- name: Drop the stale payload after a DB reset (forces a rebuild)
+  ansible.builtin.file:
+    path: "{{ mythic_beachhead_payload }}"
+    state: absent
+  when: mythic_db_reset is changed
+  become: true
+
 - name: Build the beachhead payload via the jupyter scripting client
   ansible.builtin.command:
     cmd: >-
@@ -267,6 +280,7 @@
   args:
     creates: "{{ mythic_beachhead_payload }}"
   become: true
+  register: beachhead_payload_copy
 
 - name: Install the beachhead systemd service
   ansible.builtin.template:
@@ -281,7 +295,9 @@
     name: nilgiri-beachhead.service
     enabled: true
     daemon_reload: true
-    state: "{{ 'restarted' if beachhead_unit.changed else 'started' }}"
+    # Restart when the unit OR the payload changed -- a running process with
+    # a stale binary never picks up the rebuild.
+    state: "{{ 'restarted' if (beachhead_unit.changed or beachhead_payload_copy is changed) else 'started' }}"
   become: true
 
 # --- tag callback (m7.s1) + boot-time re-tagger --------------------------
