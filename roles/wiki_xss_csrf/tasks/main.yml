@@ -48,10 +48,21 @@
       download -- check this guest's internet egress.
   when: not wiki_stack_staged.stat.exists
 
-# ---- MediaWiki stack on wiki.charlie ----------------------------------
+# ---- Per-host dispatch ---------------------------------------------------
+# nilgiri's playbook invoked the fs.charlie half (fs_charlie_setup.yml) on
+# fs.charlie separately; CRADLE wires this single role to BOTH instances,
+# so dispatch here: wiki.charlie gets the stack + content, fs.charlie gets
+# the HR share + KeePass handoff. group_names covers the CRADLE inventory
+# (hosts are keyed by IP with instance names as groups -- see
+# sqli_webapp/supply_chain_deploy for the pattern).
 - name: Deploy MediaWiki (IIS + PHP + MariaDB + core)
   ansible.builtin.include_tasks: mediawiki.yml
+  when: inventory_hostname in ['wiki.charlie', 'WikiCharlie'] or 'WikiCharlie' in group_names
 
-# ---- Wiki content (sysop namespace, bait article, M3.s3, M4.s1) -------
 - name: Seed wiki content (users, sysop namespace, bait, M3.s3, M4.s1)
   ansible.builtin.include_tasks: wiki_content.yml
+  when: inventory_hostname in ['wiki.charlie', 'WikiCharlie'] or 'WikiCharlie' in group_names
+
+- name: fs.charlie half (local-admin grant + HR share + KeePass handoff)
+  ansible.builtin.include_tasks: fs_charlie_setup.yml
+  when: inventory_hostname in ['fs.charlie', 'FileServer_SMB'] or 'FileServer_SMB' in group_names
