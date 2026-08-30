@@ -59,10 +59,24 @@
       delegate_to: '{{ groups["GitlabAlpha"][0] }}'
       become: false
 
-    - name: Publish CredService.exe in the warmed dotnet image (GitlabAlpha)
+    # Play-order independence: operator-ws1's play runs BEFORE gitlab.alpha's
+    # in the generated playbook, so on a clean rebuild the warmed
+    # dotnet-sdk-offline image does not exist yet when we get here. Use it
+    # when present, else fall back to the base image (cold NuGet restore via
+    # this guest's internet -- slower, same output).
+    - name: Pick the build image (warmed offline image when present, base otherwise)
+      ansible.builtin.shell: >-
+        docker image inspect {{ credservice_build_image }} >/dev/null 2>&1
+        && echo {{ credservice_build_image }} || echo {{ credservice_build_base }}
+      delegate_to: '{{ groups["GitlabAlpha"][0] }}'
+      become: false
+      changed_when: false
+      register: cs_build_image_pick
+
+    - name: Publish CredService.exe in the dotnet image (GitlabAlpha)
       ansible.builtin.shell: >-
         docker run --rm -v /tmp/credservice-build:/src -w /src
-        {{ credservice_build_image }}
+        {{ cs_build_image_pick.stdout }}
         bash -lc 'dotnet publish CredService.csproj -c Release -r win-x64
         --self-contained true -p:PublishSingleFile=true
         -p:ServiceTag={{ m6_s1 }} -v minimal -o /src/out'

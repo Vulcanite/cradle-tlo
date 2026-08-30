@@ -33,6 +33,7 @@ credservice_service_description: 'Internal credential cache refresh worker (nilg
 # MSBuild -p:ServiceTag value.
 credservice_staging_dir: /mnt/hdd1/amish/TheLastOnes/staging/m6
 credservice_build_image: dotnet-sdk-offline:8.0
+credservice_build_base: mcr.microsoft.com/dotnet/sdk:8.0
 
 # Recorded build provenance -- updated by scripts/m6_bake_installers.sh
 # after each rebuild. verify_hardening pins these for regression
