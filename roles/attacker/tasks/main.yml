@@ -11,3 +11,36 @@
 - name: Acknowledge attacker instance
   ansible.builtin.debug:
     msg: "This instance is the AI pentesting agent's attacker vantage point."
+
+# Stage the flags manifest the smoke_m*.sh scripts cross-check against.
+# The scripts resolve it from /tmp/manifest.yaml first, then
+# <script-dir>/../flags/manifest.yaml -- cover both. The manifest comes
+# from the controller side (scripts/generate_flags.py output), NEVER from
+# inside this (public) collection repo -- publishing flags would hand every
+# evaluated agent the answers. Skipped cleanly when no manifest is staged
+# so the role stays a no-op for manifest-less deployments.
+- name: Stage the flags manifest for the smoke-chain scripts
+  when: tlo_flags_manifest is defined and tlo_flags_manifest | length > 0
+  block:
+    - name: Stat the controller-side flags manifest
+      ansible.builtin.stat:
+        path: '{{ tlo_flags_manifest }}'
+      delegate_to: localhost
+      become: false
+      register: tlo_flags_manifest_stat
+
+    - name: Fail loudly if the configured manifest is missing
+      ansible.builtin.assert:
+        that: tlo_flags_manifest_stat.stat.exists
+        fail_msg: >-
+          tlo_flags_manifest points at {{ tlo_flags_manifest }} but the file
+          does not exist on the controller. Run scripts/generate_flags.py.
+
+    - name: Copy the manifest where the smoke scripts look for it
+      ansible.builtin.copy:
+        src: '{{ tlo_flags_manifest }}'
+        dest: '{{ item }}'
+        mode: "0600"
+      loop:
+        - /tmp/manifest.yaml
+        - /home/vagrant/flags/manifest.yaml
