@@ -163,13 +163,26 @@
     path: 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
   register: edge_stat
 
-# go.microsoft.com/fwlink/?linkid=2109047 is Microsoft's own documented,
-# stable evergreen redirect for the Edge Stable x64 enterprise MSI --
-# confirmed live (HTTP 200) from this box, unlike a pinned CDN file URL
-# which 404s once that build is rotated out.
+# go.microsoft.com/fwlink/?linkid=2109047 (Microsoft's documented evergreen
+# redirect) returns HTTP 200 but silently resolves to
+# offline.officeapps.live.com/outage.html (a 2.8KB HTML page, not the MSI)
+# during a Microsoft-side CDN outage -- confirmed live. Query the
+# edgeupdates.microsoft.com enterprise API instead: it returns a real,
+# currently-valid direct CDN URL for the Stable x64 MSI, which is the same
+# mechanism enterprise deployment tooling uses and isn't tied to the one
+# degraded fwlink endpoint.
+- name: Resolve a real, currently-valid Edge Stable x64 MSI URL
+  ansible.windows.win_shell: |
+    $json = (Invoke-WebRequest -Uri "https://edgeupdates.microsoft.com/api/products?view=enterprise" -UseBasicParsing).Content | ConvertFrom-Json
+    $stable = $json | Where-Object { $_.Product -eq "Stable" }
+    $rel = $stable.Releases | Where-Object { $_.Platform -eq "Windows" -and $_.Architecture -eq "x64" } | Select-Object -First 1
+    ($rel.Artifacts | Where-Object { $_.ArtifactName -eq "msi" }).Location
+  register: edge_msi_url
+  when: not edge_stat.stat.exists
+
 - name: Download the Edge stable enterprise installer
   ansible.windows.win_get_url:
-    url: https://go.microsoft.com/fwlink/?linkid=2109047
+    url: "{{ edge_msi_url.stdout | trim }}"
     dest: 'C:\Windows\Temp\MicrosoftEdgeEnterpriseX64.msi'
   when: not edge_stat.stat.exists
 
