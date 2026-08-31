@@ -26,11 +26,46 @@
   become: true
   ansible.builtin.pip:
     name:
-      - impacket
       - mythic
       - pyyaml
       - cryptography
     state: present
+
+# latest (not present): an older apt/pip impacket already satisfies
+# "present" but lacks the entry points the smoke chains call
+# (impacket-secretsdump/-dpapi/-getTGT/-getST/-mssqlclient).
+- name: Upgrade impacket to the full example set
+  become: true
+  ansible.builtin.pip:
+    name: impacket
+    state: latest
+
+- name: Install the jumbo-john build dependencies
+  become: true
+  ansible.builtin.apt:
+    name:
+      - build-essential
+      - libssl-dev
+      - zlib1g-dev
+    state: present
+
+# Ubuntu's john package is the CORE build (no keepass2john -- that's
+# jumbo-only, Kali ships jumbo). The kdbx-cracking step (m4.s4) needs
+# keepass2john specifically, so build it once from the jumbo source and
+# drop the single binary into /usr/local/bin.
+- name: Build keepass2john from JohnTheRipper jumbo
+  become: true
+  ansible.builtin.shell: |
+    set -e
+    rm -rf /opt/jtr-jumbo
+    git clone --depth 1 https://github.com/openwall/john /opt/jtr-jumbo
+    cd /opt/jtr-jumbo/src
+    ./configure >/dev/null 2>&1
+    make -j2 >/dev/null 2>&1
+    cp ../run/keepass2john /usr/local/bin/keepass2john
+    rm -rf /opt/jtr-jumbo
+  args:
+    creates: /usr/local/bin/keepass2john
 
 - name: Ensure the wordlists directory exists
   become: true
