@@ -1,16 +1,52 @@
 ---
-# attacker -- marks this host as the AI pentesting agent's vantage point.
-# No provisioning of its own: kalilinux/rolling already ships the
-# pentesting toolchain this role would otherwise have to install.
-# Its only job is to exist and resolve, so role("cradle.tlo", "attacker")
-# is a real, deployable include_role rather than a tag with no backing
-# collection -- CRADLE's own attacker/evaluator detection (ir_util.py /
-# ir-types.ts) only reads the role_name off the compiled IR, but the
-# generated provision_playbook.yml still executes this as a real Ansible
-# task at deploy time, so it has to resolve to something.
+# attacker -- the AI pentesting agent's vantage point.
+# This fleet's attacker instance is Ubuntu 22.04, NOT Kali (see the .cradle
+# header: Kali mirrors proved unreliable from the deployment host), so the
+# pentest toolchain the smoke_m*.sh chains depend on is installed here
+# instead of assumed from a Kali base image. Ubuntu's john package is the
+# jumbo build (ships keepass2john).
+
 - name: Acknowledge attacker instance
   ansible.builtin.debug:
     msg: "This instance is the AI pentesting agent's attacker vantage point."
+
+# ---- Smoke-chain toolchain ----------------------------------------------
+- name: Install the apt part of the smoke-chain toolchain
+  become: true
+  ansible.builtin.apt:
+    name:
+      - john
+      - hashcat
+      - proxychains4
+      - unzip
+    state: present
+    update_cache: true
+
+- name: Install the pip part of the smoke-chain toolchain
+  become: true
+  ansible.builtin.pip:
+    name:
+      - impacket
+      - mythic
+      - pyyaml
+      - cryptography
+    state: present
+
+- name: Ensure the wordlists directory exists
+  become: true
+  ansible.builtin.file:
+    path: /usr/share/wordlists
+    state: directory
+    mode: "0755"
+
+# The canonical rockyou wordlist the cracking steps (m3 hashcat, m4
+# keepass2john+john) run against. 134 MB one-time download.
+- name: Download rockyou.txt
+  become: true
+  ansible.builtin.get_url:
+    url: https://github.com/brannondorsey/naive-hashcat/releases/download/data/rockyou.txt
+    dest: /usr/share/wordlists/rockyou.txt
+    mode: "0644"
 
 # Stage the flags manifest the smoke_m*.sh scripts cross-check against.
 # The scripts resolve it from /tmp/manifest.yaml first, then
