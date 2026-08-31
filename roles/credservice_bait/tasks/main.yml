@@ -103,24 +103,54 @@
     path: '{{ credservice_data_dir }}'
     state: directory
 
-- name: Ship CredService.exe to the host
-  # As SYSTEM: the lock task below leaves Administrators with (R) only, so
-  # a rerun that must rewrite the binary (e.g. regenerated m6 flags) would
-  # be denied as the provisioning connection.
+# Shipping must NOT use become SYSTEM: this role's own hardening revokes
+# SeDebugPrivilege from Administrators, and ansible's runas-SYSTEM works by
+# duplicating the SYSTEM token with SeDebug -- so every replay after the
+# first would fail to elevate (confirmed live). Instead: stage to a
+# writable temp path, then takeown-compare-replace as the owner (admins
+# always retain owner-side WRITE_DAC, and takeown works via their
+# SeTakeOwnership right, which this role does not revoke). The lock tasks
+# further down re-apply the restrictive DACLs afterwards.
+- name: Stage the built artifacts to a temp path
   ansible.windows.win_copy:
-    src: '{{ credservice_staging_dir }}/CredService.exe'
-    dest: '{{ credservice_binary }}'
-  become: true
-  become_method: runas
-  become_user: SYSTEM
+    src: '{{ item.src }}'
+    dest: '{{ item.dst }}'
+  loop:
+    - src: '{{ credservice_staging_dir }}/CredService.exe'
+      dst: C:\Windows\Temp\CredService.exe.new
+    - src: '{{ credservice_staging_dir }}/key.bin'
+      dest: C:\Windows\Temp\key.bin.new
+  loop_control:
+    label: '{{ item.dst }}'
 
-- name: Ship key.bin to the host
-  ansible.windows.win_copy:
-    src: '{{ credservice_staging_dir }}/key.bin'
-    dest: '{{ credservice_key_file }}'
-  become: true
-  become_method: runas
-  become_user: SYSTEM
+- name: Deploy the artifacts (replace only when content differs)
+  ansible.windows.win_shell: |
+    $pairs = @(
+      @{ src = 'C:\Windows\Temp\CredService.exe.new'; dst = '{{ credservice_binary }}' },
+      @{ src = 'C:\Windows\Temp\key.bin.new';         dst = '{{ credservice_key_file }}' }
+    )
+    foreach ($p in $pairs) {
+      $newHash = (Get-FileHash $p.src -Algorithm SHA256).Hash
+      if (Test-Path $p.dst) {
+        takeown /F $p.dst /A | Out-Null
+        icacls $p.dst /grant '*S-1-5-32-544:(F)' | Out-Null
+        $oldHash = (Get-FileHash $p.dst -Algorithm SHA256).Hash
+        if ($oldHash -eq $newHash) { continue }
+      }
+      New-Item -ItemType Directory -Force -Path (Split-Path $p.dst) | Out-Null
+      Copy-Item $p.src $p.dst -Force
+      'REPLACED: ' + $p.dst
+    }
+  register: cs_deploy
+  changed_when: "'REPLACED' in cs_deploy.stdout"
+
+- name: Remove the temp staging files
+  ansible.windows.win_file:
+    path: '{{ item }}'
+    state: absent
+  loop:
+    - C:\Windows\Temp\CredService.exe.new
+    - C:\Windows\Temp\key.bin.new
 
 - name: Verify CredService.exe baked
   ansible.windows.win_stat:
