@@ -30,10 +30,15 @@
       </authentication>
       <!-- M4->M5 gate (anti-shortcut). Windows Auth alone proves only "some
            oscar principal", so URL Authorization pins the app to ONE identity:
-           remove allow-all, allow only helpdesk.bridge -- the M4.s4 credential
+           remove allow-all, allow only helpdesk.bridge, whose M4.s4 credential
            is then the only way in. Use the system.webServer (IIS) authorization,
            NOT the ASP.NET system.web form (HTTP 500.19 here). Needs the
-           Web-Url-Auth feature + section unlock (both in web_oscar_setup.yml). -->
+           Web-Url-Auth feature + section unlock (both in web_oscar_setup.yml).
+           NOTE: an XML comment body may never contain two adjacent hyphens
+           (illegal per the XML spec); an earlier version of this comment did,
+           which broke web.config's own XML well-formedness and produced
+           misleading "config section locked" 500.19 errors instead of a
+           parse error, confirmed live via appcmd's "list config" output. -->
       <authorization>
         <remove users="*" roles="" verbs="" />
         <add accessType="Allow" users="{{ sqli_bridge_domain_netbios }}\{{ sqli_bridge_user }}" />
