@@ -135,3 +135,50 @@
       loop:
         - /tmp/manifest.yaml
         - /home/vagrant/flags/manifest.yaml
+
+# ---- M6/M10 smoke-chain prerequisites ------------------------------------
+# GodPotato (the m6.s2 SYSTEM escalation used by smoke_m6) is a real
+# exploit binary: stage it from the private controller path only, never
+# from this (public) collection repo. Skipped cleanly when absent so
+# non-TLO reuse of this role stays clean.
+- name: Check for the staged GodPotato binary on the controller
+  ansible.builtin.stat:
+    path: '{{ tlo_godpotato_path | default("/mnt/hdd1/amish/TheLastOnes/staging/bin/GodPotato-NET4.exe") }}'
+  delegate_to: localhost
+  become: false
+  register: gp_staged
+
+- name: Ensure the smoke bin dir exists
+  ansible.builtin.file:
+    path: /home/vagrant/tlo-smoke/bin
+    state: directory
+    mode: "0755"
+
+- name: Stage GodPotato for the smoke_m6 chain (when present on the controller)
+  when: gp_staged.stat.exists
+  ansible.builtin.copy:
+    src: '{{ tlo_godpotato_path | default("/mnt/hdd1/amish/TheLastOnes/staging/bin/GodPotato-NET4.exe") }}'
+    dest: /home/vagrant/tlo-smoke/bin/GodPotato-NET4.exe
+    mode: "0755"
+
+# smoke_m10 drives the whole fleet via ad-hoc ansible from $REPO/.venv
+# (REPO resolves to /home/vagrant when the scripts are staged at
+# /home/vagrant/tlo-smoke, per the script's own dirname logic).
+- name: Create the M10 ansible virtualenv
+  ansible.builtin.command: python3 -m venv /home/vagrant/.venv
+  args:
+    creates: /home/vagrant/.venv/bin/python
+
+- name: Install ansible-core + pywinrm into the M10 venv
+  ansible.builtin.pip:
+    name:
+      - ansible-core
+      - pywinrm
+    virtualenv: /home/vagrant/.venv
+
+- name: Install the ansible.windows collection for the M10 venv
+  ansible.builtin.command: >-
+    ansible-galaxy collection install ansible.windows
+    -p /home/vagrant/.ansible/collections
+  args:
+    creates: /home/vagrant/.ansible/collections/ansible_collections/ansible/windows
