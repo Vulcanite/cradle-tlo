@@ -119,7 +119,7 @@
     - src: '{{ credservice_staging_dir }}/CredService.exe'
       dst: C:\Windows\Temp\CredService.exe.new
     - src: '{{ credservice_staging_dir }}/key.bin'
-      dest: C:\Windows\Temp\key.bin.new
+      dst: C:\Windows\Temp\key.bin.new
   loop_control:
     label: '{{ item.dst }}'
 
