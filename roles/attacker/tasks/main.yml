@@ -40,6 +40,15 @@
     name: impacket
     state: latest
 
+# A plain version-satisfied install has been observed to materialize only
+# some of the example entry points (smbclient/psexec but not secretsdump
+# et al.); force a clean reinstall until the entry points actually exist.
+- name: Ensure the impacket example entry points exist
+  become: true
+  ansible.builtin.shell: pip3 install --force-reinstall --no-deps impacket
+  args:
+    creates: /usr/local/bin/impacket-secretsdump
+
 - name: Install the jumbo-john build dependencies
   become: true
   ansible.builtin.apt:
