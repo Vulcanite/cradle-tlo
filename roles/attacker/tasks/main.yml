@@ -1,14 +1,38 @@
 ---
 # attacker -- the AI pentesting agent's vantage point.
-# This fleet's attacker instance is Ubuntu 22.04, NOT Kali (see the .cradle
-# header: Kali mirrors proved unreliable from the deployment host), so the
-# pentest toolchain the smoke_m*.sh chains depend on is installed here
-# instead of assumed from a Kali base image. Ubuntu's john package is the
-# jumbo build (ships keepass2john).
+# Kali Linux (rolling). Kali's own apt mirrors (http.kali.org and friends)
+# are unreachable from this deployment host -- confirmed twice now (fast
+# TCP resets, not timeouts: a campus network security policy on the
+# deployment host's network, not a dead mirror). An earlier iteration of
+# this fleet worked around this by substituting Ubuntu for Kali entirely;
+# this one keeps the real Kali box (for its native impacket-scripts/
+# jumbo-john packaging) and instead repoints Kali's apt source at Debian's
+# own mirror below, since none of the packages this role needs are actually
+# Kali-specific -- kali-rolling tracks Debian testing/unstable.
 
 - name: Acknowledge attacker instance
   ansible.builtin.debug:
     msg: "This instance is the AI pentesting agent's attacker vantage point."
+
+# Guarded on the file's existence so this role stays a no-op on a non-Kali
+# attacker image (e.g. if a future iteration substitutes Ubuntu again).
+- name: Check whether this is a Kali box with its own (blocked) apt source
+  ansible.builtin.stat:
+    path: /etc/apt/sources.list.d/kali.sources
+  register: kali_sources_file
+
+- name: Point Kali's apt source at a reachable Debian mirror instead
+  when: kali_sources_file.stat.exists
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/kali.sources
+    content: |
+      Types: deb
+      URIs: http://deb.debian.org/debian/
+      Suites: sid
+      Components: main contrib non-free non-free-firmware
+      Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+    mode: "0644"
 
 # ---- Smoke-chain toolchain ----------------------------------------------
 - name: Install the apt part of the smoke-chain toolchain
@@ -19,9 +43,22 @@
       - hashcat
       - proxychains4
       - unzip
+      - jq
+      # hashcat has no OpenCL/CUDA/HIP backend at all without this on a
+      # plain KVM guest with no GPU passthrough -- confirmed live
+      # (`clGetPlatformIDs(): CL_PLATFORM_NOT_FOUND_KHR`); --force alone
+      # only skips the driver-warning check, it doesn't provide a backend.
+      - pocl-opencl-icd
+      - ocl-icd-libopencl1
     state: present
     update_cache: true
 
+# Kali rolling ships Python 3.13, which enforces PEP 668
+# (externally-managed-environment) -- pip refuses an unmanaged system
+# install without this flag. None of these three are Kali-packaged
+# (mythic isn't packaged at all; pyyaml/cryptography exist as
+# python3-yaml/python3-cryptography but a mixed apt+pip install for the
+# same libs is more fragile than just using pip consistently for all three).
 - name: Install the pip part of the smoke-chain toolchain
   become: true
   ansible.builtin.pip:
@@ -30,51 +67,15 @@
       - pyyaml
       - cryptography
     state: present
+    extra_args: --break-system-packages
 
-# latest (not present): an older apt/pip impacket already satisfies
-# "present" but lacks the entry points the smoke chains call
-# (impacket-secretsdump/-dpapi/-getTGT/-getST/-mssqlclient).
-- name: Upgrade impacket to the full example set
-  become: true
-  ansible.builtin.pip:
-    name: impacket
-    state: latest
-
-# A plain version-satisfied install has been observed to materialize only
-# some of the example entry points (smbclient/psexec but not secretsdump
-# et al.); force a clean reinstall until the entry points actually exist.
-- name: Ensure the impacket example entry points exist
-  become: true
-  ansible.builtin.shell: pip3 install --force-reinstall --no-deps impacket
-  args:
-    creates: /usr/local/bin/impacket-secretsdump
-
-- name: Install the jumbo-john build dependencies
-  become: true
-  ansible.builtin.apt:
-    name:
-      - build-essential
-      - libssl-dev
-      - zlib1g-dev
-    state: present
-
-# Ubuntu's john package is the CORE build (no keepass2john -- that's
-# jumbo-only, Kali ships jumbo). The kdbx-cracking step (m4.s4) needs
-# keepass2john specifically, so build it once from the jumbo source and
-# drop the single binary into /usr/local/bin.
-- name: Build keepass2john from JohnTheRipper jumbo
-  become: true
-  ansible.builtin.shell: |
-    set -e
-    rm -rf /opt/jtr-jumbo
-    git clone --depth 1 https://github.com/openwall/john /opt/jtr-jumbo
-    cd /opt/jtr-jumbo/src
-    ./configure >/dev/null 2>&1
-    make -j2 >/dev/null 2>&1
-    cp ../run/keepass2john /usr/local/bin/keepass2john
-    rm -rf /opt/jtr-jumbo
-  args:
-    creates: /usr/local/bin/keepass2john
+# Real Kali's `impacket-scripts` + `python3-impacket` (apt, already on the
+# base image) provide every impacket-<name> entry point the smoke chains
+# call, and Kali's `john` is already the jumbo build (ships keepass2john) --
+# neither the pip force-reinstall nor the from-source jumbo build the
+# previous Ubuntu-substitute iteration needed are required here. Forcing a
+# pip impacket install on top of Kali's apt-managed one risks breaking the
+# working system install instead, so this is deliberately left alone.
 
 - name: Ensure the wordlists directory exists
   become: true
@@ -120,12 +121,16 @@
       ansible.builtin.file:
         path: /home/vagrant/flags
         state: directory
+        owner: vagrant
+        group: vagrant
         mode: "0700"
 
     - name: Copy the manifest where the smoke scripts look for it
       ansible.builtin.copy:
         src: '{{ tlo_flags_manifest }}'
         dest: '{{ item }}'
+        owner: vagrant
+        group: vagrant
         mode: "0600"
       loop:
         - /tmp/manifest.yaml

@@ -155,6 +155,30 @@
     path: 'C:\Windows\Setup\Scripts'
     state: directory
 
+# wiki_browser_bot.ps1's own header notes Edge ships in-box on Server
+# 2022+; this instance is Server 2019, which doesn't carry it -- confirmed
+# live (`Get-Item msedge.exe` -> nothing, bot exits "msedge.exe not found").
+- name: Check whether Edge is already present
+  ansible.windows.win_stat:
+    path: 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+  register: edge_stat
+
+# go.microsoft.com/fwlink/?linkid=2109047 is Microsoft's own documented,
+# stable evergreen redirect for the Edge Stable x64 enterprise MSI --
+# confirmed live (HTTP 200) from this box, unlike a pinned CDN file URL
+# which 404s once that build is rotated out.
+- name: Download the Edge stable enterprise installer
+  ansible.windows.win_get_url:
+    url: https://go.microsoft.com/fwlink/?linkid=2109047
+    dest: 'C:\Windows\Temp\MicrosoftEdgeEnterpriseX64.msi'
+  when: not edge_stat.stat.exists
+
+- name: Install Edge silently
+  ansible.windows.win_package:
+    path: 'C:\Windows\Temp\MicrosoftEdgeEnterpriseX64.msi'
+    state: present
+  when: not edge_stat.stat.exists
+
 - name: Stage the Edge headless browser-bot script
   ansible.windows.win_copy:
     src: wiki_browser_bot.ps1
